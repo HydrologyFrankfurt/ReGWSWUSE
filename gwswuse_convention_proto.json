@@ -1,0 +1,57 @@
+{
+    "reference_names": [
+        "consumptive_use_tot", "abstraction_tot", "irrigation_efficiency_sw",
+        "fraction_gw_use", "fraction_return_gw", "gwd_mask",
+        "abstraction_irr_part_mask", "time_factor_aai",
+        "pirr-cu-tot", "gw_fraction_irrigation", "gw_return_fraction_irrigation",
+        "time_factor_aai", "irr_efficiency_sw", "irrigation_wu_over_5pct_mask",
+        "gw_depletion_over_5mm_mask",
+        "pdom-cu-tot", "pdom-ww-tot", "gw_fraction_domestic",
+        "pman-ww-tot", "pman-cu-tot", "gw_fraction_manufacturing",
+        "ptp-ww-tot", "ptp-cu-tot",
+        "pliv-cu-tot"
+    ],
+    "time_variant_vars": [
+        "consumptive_use_tot", "abstraction_tot", "time_factor_aai"
+    ],
+    "sector_requirements": {
+        "irrigation": {
+            "time_freq": "monthly",
+            "expected_units": "m3/month",
+            "expected_vars": [
+                "consumptive_use_tot", "fraction_gw_use", "fraction_return_gw",
+                "irrigation_efficiency_sw", "gwd_mask", "abstraction_irr_part_mask",
+                "time_factor_aai"
+            ],
+            "unit_vars": ["consumptive_use_tot"]
+        },
+        "domestic": {
+            "time_freq": "annual",
+            "expected_units": "m3/year",
+            "expected_vars": [
+                "consumptive_use_tot", "abstraction_tot", "fraction_gw_use"
+            ],
+            "unit_vars": ["consumptive_use_tot", "abstraction_tot"]
+        },
+        "thermal_power": {
+            "time_freq": "annual",
+            "expected_units": "m3/year",
+            "expected_vars": ["consumptive_use_tot", "abstraction_tot"],
+            "unit_vars": ["consumptive_use_tot", "abstraction_tot"]
+        },
+        "livestock": {
+            "time_freq": "annual",
+            "expected_units": "m3/year",
+            "expected_vars": ["consumptive_use_tot"],
+            "unit_vars": ["consumptive_use_tot"]
+        },
+        "manufacturing": {
+            "time_freq": "annual",
+            "expected_units": "m3/year",
+            "expected_vars": [
+                "consumptive_use_tot", "abstraction_tot", "fraction_gw_use"
+            ],
+            "unit_vars": ["consumptive_use_tot", "abstraction_tot"]
+        }
+    }
+}

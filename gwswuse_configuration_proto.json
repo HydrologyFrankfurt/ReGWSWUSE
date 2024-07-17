@@ -1,0 +1,55 @@
+{
+  "FilePath": {
+    "inputDir": {
+      "input_data": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/input_data/",
+      "gwswuse_convention": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/gwswuse_convention_new.json"
+    },
+    "outputDir": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/output_data/"
+  },
+  "RuntimeOptions":{
+      "SimulationOption": {
+        "time_extend_mode": false,
+        "irrigation_efficiency_gw_mode": "enforce",
+        "correct_irr_simulation_by_t_aai": false,
+        "deficit_irrigation_mode": true
+      },
+      "ParameterSetting": {
+        "efficiency_gw_threshold": 0.7,
+        "deficit_irrigation_factor": 0.7
+      },
+      "SimulationPeriod":{
+        "start": 2000, 
+        "end": 2010
+      }
+  },
+  "OutputSelection": {
+    "WGHM_input_run": true,
+    "Sectors": {
+      "total": true,
+      "irrigation": false,
+      "domestic": false,
+      "manufacturing": false,
+      "thermal power": false,
+      "livestock": false
+    },
+    "GWSWUSE variables": {
+      "consumptive_use": {
+        "tot": false,  "gw": false, "sw": false
+      },
+      "abstraction": {
+        "tot": false, "gw": false, "sw": false
+      },
+      "return_flow": {
+        "tot": false, "gw": false, "sw": false
+      },
+      "net_abstraction": {
+        "gw": true, "sw": true
+      },
+      "irrigation_efficiency": {
+        "gw": false, "sw": false
+      },
+      "deficit_irrigation_location": false
+    },
+    "Global_Annual_Totals": false
+  }
+}
