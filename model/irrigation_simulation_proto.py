@@ -13,9 +13,10 @@
 
 import time
 import xarray as xr
-from controller import configuration_module as cm
-from model import model_equations as me
-from model import time_unit_conversion as tc
+import pandas as pd
+from controller import configuration_module_proto as cm
+from model import model_equations_proto as me
+from model import time_unit_conversion_proto as tc
 
 
 class IrrigationSimulator:
@@ -105,16 +106,17 @@ class IrrigationSimulator:
         """
         start_time = time.time()
         # Convert total consumptive use to daily values
+        # print(f"preprocessed cu_tot: {irr_data['consumptive_use_tot'].values[5, 110, 129]:.16f}")
         self.consumptive_use_tot = \
             tc.convert_monthly_to_daily(irr_data['consumptive_use_tot'].values)
+        # print(f"time_converted cu_tot: {self.consumptive_use_tot[5, 110, 129]:.16f}")
 
         # Set fraction of groundwater use, default to 0 if not provided
         self.fraction_gw_use = \
             (irr_data['fraction_gw_use'].values
-             if 'fraction_return_gw' in irr_data and
+             if 'fraction_gw_use' in irr_data and
              isinstance(irr_data['fraction_gw_use'], xr.DataArray)
              else 0)
-
         # Set fraction of groundwater return, default to 0 if not provided
         self.fraction_return_gw = \
             (irr_data['fraction_return_gw'].values
@@ -135,6 +137,8 @@ class IrrigationSimulator:
                                          self.abstraction_irr_part_mask,
                                          cm.deficit_irrigation_factor)
 
+        # Set quotient_aai_aei
+        self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
         # Set time factor
         self.time_factor_aai = irr_data['time_factor_aai'].values
 
@@ -163,6 +167,14 @@ class IrrigationSimulator:
         Run the irrigation simulation with provided data and model equations.
         """
         print("Running irrigation simulation...")
+        # Correct total consumptive use by quotient for area actually irrigated
+        # and area equipped for irrigation
+        self.consumptive_use_tot = \
+            me.calc_irr_consumptive_use_aai(
+                self.consumptive_use_tot,
+                self.fraction_aai_aei,
+                cm.calc_irr_cons_use_aai_mode
+                )
 
         # Calc deficit total consumptive use in irrigation
         self.consumptive_use_tot = \
@@ -174,10 +186,10 @@ class IrrigationSimulator:
 
         # Correct total consumptive use by time dev for area actually irrigated
         self.consumptive_use_tot = \
-            me.calc_irr_consumptive_use_correct_by_t_aai(
+            me.correct_irr_consumptive_use_by_t_aai(
                 self.consumptive_use_tot,
                 self.time_factor_aai,
-                cm.correct_irr_with_t_aai_mode
+                cm.correct_irr_t_aai_mode
                 )
 
         # Calc consumptive use from groundwater and surface water
@@ -186,7 +198,7 @@ class IrrigationSimulator:
                 self.consumptive_use_tot,
                 self.fraction_gw_use
                 )
-
+ 
         # Calc total and split abstractions for groundwater and surface water
         self.abstraction_gw, self.abstraction_sw, self.abstraction_tot = \
             me.calc_irr_abstraction_totgwsw(self.consumptive_use_gw,
@@ -207,17 +219,17 @@ class IrrigationSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-
+        
 if __name__ == "__main__":
     # from controller import configuration_module as cm
     from controller import input_data_manager_new as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_path,
+        idm.input_data_manager(cm.input_data_path,
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,
                                cm.time_extend_mode,
-                               cm.correct_irr_with_t_aai_mode
+                               cm.correct_irr_t_aai_mode
                                )
     irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'])

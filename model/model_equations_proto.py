@@ -17,9 +17,9 @@ from numba import njit
 # import xarray as xr
 import numpy as np
 # import watergap_logger as log
-from model import time_unit_conversion as tc
+from model import time_unit_conversion_proto as tc
 
-# ===============================================================
+# ===============================================================aqq
 # Get module name and remove the .py extension
 # Module name is passed to logger
 # # ===============================================================
@@ -261,17 +261,55 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
 
     return irr_consumptive_use_tot  # No adjustment made
 
+#                  =======================================
+#                  ||  CORRECTION WITH QUOTIENT_AAI_AEI ||
+#                  =======================================
+
+
+# @njit(cache=True)
+def calc_irr_consumptive_use_tot_aai(
+        irr_consumptive_use_tot_aei,
+        fraction_aai_aei,
+        calc_irr_cons_use_aai_mode):
+    """
+    Calc total consumptive use for area, actually irrigated.
+
+    The function is used for the following sectors:
+        - Irrigation
+
+    Parameters
+    ----------
+    irr_consumptive_use_tot_aei : numpy.ndarray
+        Total consumptive use for area equipped for irrigation. 
+    fraction_aai_aei : numpy.ndarray
+        Fraction of area equipped for irrigation that actually
+        irrigated.
+    calc_irr_cu_aai_mode : bool
+        DESCRIPTION.
+
+    Returns
+    -------
+    irr_consumptive_use_tot_aai : numpy.ndarray
+        Total consumptive use for area actually for irrigation.
+
+    """
+    if correct_irr_fract_aai_aei_mode is True:
+        irr_consumptive_use_tot_aai = \
+            irr_consumptive_use_tot_aei * fraction_aai_aei
+        return irr_consumptive_use_tot_aai
+    return irr_consumptive_use_tot
+
 #                  =================================
 #                  ||    CORRECTION WITH T_AAI    ||
 #                  =================================
 
 
 # @njit(cache=True)
-def calc_irr_consumptive_use_correct_by_t_aai(irr_consumptive_use_tot,
-                                              time_factor_aai,
-                                              correct_with_t_aai_mode):
+def correct_irr_consumptive_use_by_t_aai(irr_consumptive_use_tot,
+                                         time_factor_aai,
+                                         correct_irr_t_aai_mode):
     """
-    Correct irrigation consumptive use tot after 2016 with time factor.
+    Correct irrigation consumptive use tot after 2016 with time factor for aai.
 
     The function is used for the following sectors:
         - Irrigation
@@ -291,7 +329,7 @@ def calc_irr_consumptive_use_correct_by_t_aai(irr_consumptive_use_tot,
         DESCRIPTION.
 
     """
-    if correct_with_t_aai_mode is True:
+    if correct_irr_t_aai_mode is True:
         irr_consumptive_use_tot_correct_by_t_aai = \
             irr_consumptive_use_tot * time_factor_aai
         return irr_consumptive_use_tot_correct_by_t_aai
@@ -318,7 +356,7 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
         The threshold at which groundwater irrigation efficiency will be
         adjusted. Default is 0.7..
     mode : str, optional
-        Mode of operation, can be 'enforce', 'adjust', or 'match'.
+        Mode of operation, can be 'enforce' or 'adjust'.
         'enforce': sets efficiency to the threshold everywhere,
         'adjust': adjusts efficiency only where it is below the threshold,
         Default is "enforce".
@@ -438,9 +476,53 @@ def sum_volume_per_time_variable(irr_monthly,
         dom_annual + man_annual + tp_annual + liv_annual
 
     dom_man_tp_liv_sum_monthly = \
-        tc.expand_annual_to_monthly(dom_man_tp_liv_sum_annual)
+        tc.expand_array_size(dom_man_tp_liv_sum_annual)
 
     total_sectors_monthly = \
         irr_monthly + dom_man_tp_liv_sum_monthly
 
     return total_sectors_monthly
+
+
+def calculate_fractions(consumptive_use_gw, consumptive_use_tot,
+                        return_flow_gw, return_flow_tot):
+    """
+    Calculate the fractions of groundwater use and return flow to groundwater.
+
+    Parameters
+    ----------
+    consumptive_use_gw : numpy.ndarray
+        Consumptive water use from groundwater across all sectors.
+    consumptive_use_tot : numpy.ndarray
+        Consumptive water use from total water resources across all sectors.
+    return_flow_gw : numpy.ndarray or xarray
+        Return flow to groundwater across all sectors.
+    return_flow_tot : numpy.ndarray
+        Total return flow from all sectors.
+
+    Returns
+    -------
+    fraction_gw_use : numpy.ndarray
+        Fraction of groundwater use across all sectors.
+    fraction_return_to_gw : numpy.ndarray
+        Fraction of total return flow to groundwater across all sectors.
+    """
+    # Create masks to identify valid denominators (not NaN and not 0)
+    valid_consumptive_use_tot = (~np.isnan(consumptive_use_tot)) & \
+                                (consumptive_use_tot != 0)
+    valid_return_flow_tot = (~np.isnan(return_flow_tot)) & \
+                            (return_flow_tot != 0)
+
+    # Initialize result arrays with NaN
+    fraction_gw_use = np.full(consumptive_use_tot.shape, np.nan)
+    fraction_return_to_gw = np.full(return_flow_tot.shape, np.nan)
+
+    # Perform calculations only for valid elements
+    fraction_gw_use[valid_consumptive_use_tot] = \
+        consumptive_use_gw[valid_consumptive_use_tot] / \
+        consumptive_use_tot[valid_consumptive_use_tot]
+    fraction_return_to_gw[valid_return_flow_tot] = \
+        return_flow_gw[valid_return_flow_tot] / \
+        return_flow_tot[valid_return_flow_tot]
+
+    return fraction_gw_use, fraction_return_to_gw
