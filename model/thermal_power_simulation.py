@@ -87,14 +87,12 @@ class ThermalPowerSimulator:
             Dictionary containing xarray.DataArrays for various thermal power
             variables.
         """
-        start_time = time.time()
-        # Set & Convert total consumptive use to daily values
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(tp_data['consumptive_use_tot'].values)
 
-        # Set & Convert total abstraction to daily values
-        self.abstraction_tot = \
-            tc.convert_yearly_to_daily(tp_data['abstraction_tot'].values)
+        # Set total consumptive use input [m3/year]
+        self.consumptive_use_tot = tp_data['consumptive_use_tot'].values
+
+        # Set total abstraction input [m3/year]
+        self.abstraction_tot = tp_data['abstraction_tot'].values
 
         # Set fraction of groundwater use, default to 0 if not provided
         self.fraction_gw_use = \
@@ -114,15 +112,20 @@ class ThermalPowerSimulator:
         # Run the irrigation simulation
         self.simulate_thermal_power()
 
-        end_time = time.time()  # Endzeit messen
-        print(f"Thermal power simulation runtime: {end_time - start_time} "
-              "seconds.")
+        print("Thermal power simulation was performed. \n")
 
     def simulate_thermal_power(self):
         """
         Run thermal power simulation with provided data and model equations.
         """
-        print("Running thermal power simulation...")
+        # Convert total consumptive use to m3/day
+        self.consumptive_use_tot = \
+            tc.convert_yearly_to_daily(self.consumptive_use_tot)
+
+        # Convert total abstraction to m3/day
+        self.abstraction_tot = \
+            tc.convert_yearly_to_daily(self.abstraction_tot)
+
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
@@ -148,10 +151,10 @@ class ThermalPowerSimulator:
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    from controller import input_data_manager_new as idm
+    from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_path,
+        idm.input_data_manager(cm.input_data_path,
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,

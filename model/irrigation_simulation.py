@@ -13,10 +13,9 @@
 
 import time
 import xarray as xr
-import pandas as pd
-from controller import configuration_module_proto as cm
-from model import model_equations_proto as me
-from model import time_unit_conversion_proto as tc
+from controller import configuration_module as cm
+from model import model_equations as me
+from model import time_unit_conversion as tc
 
 
 class IrrigationSimulator:
@@ -78,6 +77,10 @@ class IrrigationSimulator:
     deficit_irrigation_location : numpy.ndarray
         Locations with irrigation deficits for the irrigation sector.
         (calculated)
+    fraction_aai_aei : numpy.ndarray
+        Yearly country-specific fraction of area actually irrigated (aai) and
+        area equipped for irrigation (aei).
+        (input)
     time_factor_aai : numpy.ndarray
         Time factor array for the irrigation sector.
         (input)
@@ -104,12 +107,8 @@ class IrrigationSimulator:
             Dictionary containing xarray.DataArrays for various irrigation
             variables.
         """
-        start_time = time.time()
-        # Convert total consumptive use to daily values
-        # print(f"preprocessed cu_tot: {irr_data['consumptive_use_tot'].values[5, 110, 129]:.16f}")
-        self.consumptive_use_tot = \
-            tc.convert_monthly_to_daily(irr_data['consumptive_use_tot'].values)
-        # print(f"time_converted cu_tot: {self.consumptive_use_tot[5, 110, 129]:.16f}")
+        # Set total consumptive use input [m3/month]
+        self.consumptive_use_tot = irr_data['consumptive_use_tot'].values
 
         # Set fraction of groundwater use, default to 0 if not provided
         self.fraction_gw_use = \
@@ -137,7 +136,7 @@ class IrrigationSimulator:
                                          self.abstraction_irr_part_mask,
                                          cm.deficit_irrigation_factor)
 
-        # Set quotient_aai_aei
+        # Set fraction_aai_aei
         self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
         # Set time factor
         self.time_factor_aai = irr_data['time_factor_aai'].values
@@ -158,22 +157,22 @@ class IrrigationSimulator:
         # Run the irrigation simulation
         self.simulate_irrigation()
 
-        end_time = time.time()
-        print(f"Irrigation simulation runtime: {end_time - start_time} "
-              "seconds.")
+        print("Irrigation simulation was performed. \n ")
 
     def simulate_irrigation(self):
         """
         Run the irrigation simulation with provided data and model equations.
         """
-        print("Running irrigation simulation...")
-        # Correct total consumptive use by quotient for area actually irrigated
-        # and area equipped for irrigation
+        # Convert total consumptive use to m3/day
+        self.consumptive_use_tot = \
+            tc.convert_monthly_to_daily(self.consumptive_use_tot)
+
+        # Calc total consumptive use in irrigation for area actually irrigated
         self.consumptive_use_tot = \
             me.calc_irr_consumptive_use_aai(
                 self.consumptive_use_tot,
                 self.fraction_aai_aei,
-                cm.calc_irr_cons_use_aai_mode
+                cm.irrigation_input_based_on_aei
                 )
 
         # Calc deficit total consumptive use in irrigation
@@ -198,7 +197,7 @@ class IrrigationSimulator:
                 self.consumptive_use_tot,
                 self.fraction_gw_use
                 )
- 
+
         # Calc total and split abstractions for groundwater and surface water
         self.abstraction_gw, self.abstraction_sw, self.abstraction_tot = \
             me.calc_irr_abstraction_totgwsw(self.consumptive_use_gw,
@@ -219,10 +218,10 @@ class IrrigationSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        
+
 if __name__ == "__main__":
     # from controller import configuration_module as cm
-    from controller import input_data_manager_new as idm
+    from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
         idm.input_data_manager(cm.input_data_path,

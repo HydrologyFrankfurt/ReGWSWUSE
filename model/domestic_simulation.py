@@ -84,14 +84,11 @@ class DomesticSimulator:
             Dictionary containing xarray.DataArrays for various domestic
             variables.
         """
-        start_time = time.time()
-        # Set & Convert total consumptive use to daily values
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(dom_data['consumptive_use_tot'].values)
+        # Set total consumptive use input [m3/year]
+        self.consumptive_use_tot = dom_data['consumptive_use_tot'].values
 
-        # Set & Convert total abstraction to daily values
-        self.abstraction_tot = \
-            tc.convert_yearly_to_daily(dom_data['abstraction_tot'].values)
+        # Set total abstraction input [m3/year]
+        self.abstraction_tot = dom_data['abstraction_tot'].values
 
         # Set fraction of groundwater use, default to 0 if not provided
         self.fraction_gw_use = \
@@ -111,18 +108,25 @@ class DomesticSimulator:
         # Run the domestic simulation
         self.simulate_domestic()
 
-        end_time = time.time()
-        print(f"Domestic simulation runtime: {end_time - start_time} seconds.")
+        print("Domestic simulation was performed. \n")
 
     def simulate_domestic(self):
         """
         Run the domestic simulation with provided data and model equations.
         """
-        print("Running domestic simulation...")
+        # Convert total consumptive use to m3/day
+        self.consumptive_use_tot = \
+            tc.convert_yearly_to_daily(self.consumptive_use_tot)
+
+        # Convert total abstraction to m3/day
+        self.abstraction_tot = \
+            tc.convert_yearly_to_daily(self.abstraction_tot)
+
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
                                    self.fraction_gw_use)
+
         # Calc abstraction from groundwater and surface water
         self.abstraction_gw, self.abstraction_sw = \
             me.calc_gwsw_water_use(self.abstraction_tot,
@@ -144,14 +148,14 @@ class DomesticSimulator:
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    from controller import input_data_manager_new as idm
+    from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_path,
+        idm.input_data_manager(cm.input_data_path,
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,
                                cm.time_extend_mode,
-                               cm.correct_irr_with_t_aai_mode
+                               cm.correct_irr_t_aai_mode
                                )
     dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])

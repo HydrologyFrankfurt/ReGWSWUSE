@@ -17,7 +17,7 @@ from numba import njit
 # import xarray as xr
 import numpy as np
 # import watergap_logger as log
-from model import time_unit_conversion_proto as tc
+from model import time_unit_conversion as tc
 
 # ===============================================================aqq
 # Get module name and remove the .py extension
@@ -65,7 +65,7 @@ def calc_gwsw_water_use(use_tot, fraction_gw_use):
 
     """
     use_gw = fraction_gw_use * use_tot
-    use_sw = (1 - fraction_gw_use) * use_tot
+    use_sw = use_tot - use_gw
 
     return use_gw, use_sw
 
@@ -188,6 +188,7 @@ def set_irr_deficit_locations(gwd_mask,
     deficit_irrigation_factor : float, optional
         Factor to set for cells that meet criteria for deficit irrigation based
         on gwd_mask and abstraction_irr_part_mask.
+        Default is 0.7, based on WaterGAP 2.2d.
 
     Returns
     -------
@@ -245,7 +246,7 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
         deficit irrigation practices.
     deficit_flag : bool
         Flag to determine whether the adjustment should be applied.
-        Defaults to True.
+        Defaults to True, based on WaterGAP 2.2d.
 
     Returns
     -------
@@ -267,10 +268,10 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
 
 
 # @njit(cache=True)
-def calc_irr_consumptive_use_tot_aai(
-        irr_consumptive_use_tot_aei,
+def calc_irr_consumptive_use_aai(
+        irr_consumptive_use_tot_input,
         fraction_aai_aei,
-        calc_irr_cons_use_aai_mode):
+        irrigation_input_based_on_aei):
     """
     Calc total consumptive use for area, actually irrigated.
 
@@ -279,25 +280,34 @@ def calc_irr_consumptive_use_tot_aai(
 
     Parameters
     ----------
-    irr_consumptive_use_tot_aei : numpy.ndarray
-        Total consumptive use for area equipped for irrigation. 
-    fraction_aai_aei : numpy.ndarray
-        Fraction of area equipped for irrigation that actually
-        irrigated.
-    calc_irr_cu_aai_mode : bool
-        DESCRIPTION.
+    irr_consumptive_use_tot : numpy.ndarray
+        Total consumptive water use for irrigation, which can be the output
+        from `calc_irr_consumptive_use_aai`, representing the initial
+        consumptive use values for the area actually irrigated (AAI).
+    time_factor_aai : numpy.ndarray
+        Represents the development of country-specific AAI (Area Actually
+        Irrigated) from 2016 onwards, relative to the reference year 2015. This
+        factor is used to adjust the consumptive use values to account for
+        changes in irrigation practices or area actually irrigated over time.
+    correct_irr_t_aai_mode : bool
+        Flag indicating whether the irrigation consumptive use should be
+        corrected with the time factor for AAI (True) or not (False).
 
     Returns
     -------
-    irr_consumptive_use_tot_aai : numpy.ndarray
-        Total consumptive use for area actually for irrigation.
+    irr_consumptive_use_tot_t_aai : numpy.ndarray
+        Corrected total consumptive water use for the area actually irrigated
+        if `correct_irr_t_aai_mode` is True; otherwise, returns the original
+        `irr_consumptive_use_tot`.
+
 
     """
-    if correct_irr_fract_aai_aei_mode is True:
+    if irrigation_input_based_on_aei:
         irr_consumptive_use_tot_aai = \
-            irr_consumptive_use_tot_aei * fraction_aai_aei
-        return irr_consumptive_use_tot_aai
-    return irr_consumptive_use_tot
+            irr_consumptive_use_tot_input * fraction_aai_aei
+    else:
+        irr_consumptive_use_tot_aai = irr_consumptive_use_tot_input
+    return irr_consumptive_use_tot_aai
 
 #                  =================================
 #                  ||    CORRECTION WITH T_AAI    ||
@@ -482,6 +492,61 @@ def sum_volume_per_time_variable(irr_monthly,
         irr_monthly + dom_man_tp_liv_sum_monthly
 
     return total_sectors_monthly
+
+
+def calculate_cross_sector_totals(irr_monthly_m3_month,
+                                  dom_annual_m3_year,
+                                  man_annual_m3_year,
+                                  tp_annual_m3_year,
+                                  liv_annual_m3_year):
+    """
+    Sum the volume per time variable for multiple sectors.
+
+    This function calculates the total volume per time variable for multiple
+    sectors by summing the monthly values of irrigation (m³/month) and the
+    annual values of domestic, manufacturing, thermal power, and livestock
+    sectors (m³/year), converting the latter into monthly values.
+
+    The volume-per-time variables for which the function is intended are:
+    - Consumptive use from groundwater (consumptive_use_gw), surface water
+      (consumptive_use_sw), or both (consumptive_use_tot).
+    - Water abstraction from groundwater (abstraction_gw), surface water
+      (abstraction_sw), or both (abstraction_tot).
+    - Return flow (rf) to groundwater (return_flow_gw), surface water
+      (return_flow_sw), or both (return_flow_tot).
+    - Net abstractions from groundwater (net_abstraction_gw) or surface water
+      (net_abstraction_sw).
+
+    Parameters
+    ----------
+    irr_monthly_m3_month : numpy.ndarray
+        Monthly irrigation data array (m³/month).
+    dom_annual_m3_year : numpy.ndarray
+        Annual domestic data array (m³/year).
+    man_annual_m3_year : numpy.ndarray
+        Annual manufacturing data array (m³/year).
+    tp_annual_m3_year : numpy.ndarray
+        Annual thermal power data array (m³/year).
+    liv_annual_m3_year : numpy.ndarray
+        Annual livestock data array (m³/year).
+
+    Returns
+    -------
+    total_sectors_monthly_m3_month : numpy.ndarray
+        Total volume per time variable for all sectors combined, represented as
+        a monthly data array (m³/month).
+    """
+    dom_man_tp_liv_sum_annual_m3_year = \
+        (dom_annual_m3_year + man_annual_m3_year + tp_annual_m3_year +
+         liv_annual_m3_year)
+
+    dom_man_tp_liv_sum_monthly_m3_month = \
+        tc.convert_yearly_to_monthly(dom_man_tp_liv_sum_annual_m3_year)
+
+    total_sectors_monthly_m3_month = \
+        irr_monthly_m3_month + dom_man_tp_liv_sum_monthly_m3_month
+
+    return total_sectors_monthly_m3_month
 
 
 def calculate_fractions(consumptive_use_gw, consumptive_use_tot,

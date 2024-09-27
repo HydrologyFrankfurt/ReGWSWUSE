@@ -17,6 +17,7 @@ from model import model_equations as me
 from model import time_unit_conversion as tc
 
 
+
 class LivestockSimulator:
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
@@ -85,14 +86,12 @@ class LivestockSimulator:
             Dictionary containing xarray.DataArrays for various livestock
             variables.
         """
-        start_time = time.time()
-        # Set & Convert total consumptive use to daily values
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(liv_data['consumptive_use_tot'].values)
+        # Set total consumptive use input [m3/year]
+        self.consumptive_use_tot = liv_data['consumptive_use_tot'].values
 
-        # Set & Convert total abstraction to daily values
+        # Set total abstraction input [m3/year]
         self.abstraction_tot = \
-            (tc.convert_yearly_to_daily(liv_data['abstraction_tot'].values)
+            (liv_data['abstraction_tot'].values
              if 'abstraction_tot' in liv_data and
              isinstance(liv_data['abstraction_tot'], xr.DataArray)
              else self.consumptive_use_tot)
@@ -115,15 +114,20 @@ class LivestockSimulator:
         # Run the irrigation simulation
         self.simulate_livestock()
 
-        end_time = time.time()  # Endzeit messen
-        print(f"Livestock simulation runtime: {end_time - start_time} "
-              "seconds.")
+        print("Livestock simulation was performed. \n")
 
     def simulate_livestock(self):
         """
         Run the livestock simulation with provided data and model equations.
         """
-        print("Running livestock simulation...")
+        # Convert total consumptive use to m3/day
+        self.consumptive_use_tot = \
+            tc.convert_yearly_to_daily(self.consumptive_use_tot)
+
+        # Convert total abstraction to m3/day
+        self.abstraction_tot = \
+            tc.convert_yearly_to_daily(self.abstraction_tot)
+
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
@@ -149,10 +153,10 @@ class LivestockSimulator:
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    from controller import input_data_manager_new as idm
+    from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_path,
+        idm.input_data_manager(cm.input_data_path,
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,

@@ -11,13 +11,20 @@
 
 """ GWSWUSE total sectors simulation module."""
 
+import os
 import time
 from model import model_equations as me
 
+# ===============================================================
+# Get module name and remove the .py extension
+# Module name is passed to logger
+# # =============================================================
+modname = (os.path.basename(__file__))
+modname = modname.split('.')[0]
 
 class TotalSectorsSimulator():
     """
-    Sum sector-specific volume per time variables.
+    Sum sector-specific volume per time variables across all sectors.
 
     Attributes
     ----------
@@ -55,8 +62,10 @@ class TotalSectorsSimulator():
         Array of net abstraction of surface water summed across all sectors.
         (calculated)
     fraction_gw_use : None
-        Placeholder for the fraction of groundwater use.
-        (input)
+        Array of fraction of groundwater use across all sectors calculated as
+        quotient of consumptive_use_gw across all sectors and
+        consumptive_use_tot across all sectors.
+        (Calculated)
     fraction_return_to_gw : None
         Placeholder for the fraction of return flow to groundwater.
         (input)
@@ -161,14 +170,15 @@ class TotalSectorsSimulator():
                                             man.net_abstraction_sw,
                                             tp.net_abstraction_sw,
                                             liv.net_abstraction_sw)
+
         # Calc fractions of groundwater use across all sectors
-        self.fraction_gw_use = \
-            self.consumptive_use_gw/self.consumptive_use_tot
-        # Calc fractions of total return flow to groundwater across all sectors
-        self.fraction_return_to_gw = \
-            self.return_flow_gw / self.return_flow_tot
+        self.fraction_gw_use, self.fraction_return_gw = \
+            me.calculate_fractions(self.consumptive_use_gw,
+                                   self.consumptive_use_tot,
+                                   self.return_flow_gw,
+                                   self.return_flow_tot)
         # Store coords for generating netcdf-output
         self.coords = irr.coords
 
         end_time = time.time()  # Endzeit messen
-        print(f"Sectors summarizer runtime: {end_time - start_time} seconds.")
+        print("Cross-sector total simulation was performed. \n")

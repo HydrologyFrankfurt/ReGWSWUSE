@@ -27,6 +27,67 @@ modname = modname.split('.')[0]
 #                  =================================
 
 
+def convert_yearly_to_monthly(annual_m3_year_data):
+    """
+    Convert yearly values from m³/yearly to monthly values in m³/month.
+
+    Parameters
+    ----------
+    annual_m3_year_data: numpy.ndarray
+        Array containing data for each year with unit m3/year. The shape of the
+        array should be (num_years, size_lat_coords, size_lon_coords).
+    Returns
+    -------
+    monthly_m3_month_data: numpy.ndarray
+        Array containing converted data for each month with unit m3/month. The
+        shape of the array will be (num_years * 12, size_lat_coords,
+        size_lon_coords).
+    """
+    monthly_m3_year_array = expand_array_size(annual_m3_year_data)
+
+    days_per_month = \
+        np.array([31.0, 28.0, 31.0, 30.0,
+                  31.0, 30.0, 31.0, 31.0,
+                  30.0, 31.0, 30.0, 31.0], dtype=np.float64)
+    num_years = annual_m3_year_data.shape[0]
+    days_per_month = np.tile(days_per_month, num_years)
+    days_per_month_reshaped = days_per_month[:, None, None]
+    monthly_part_of_year = days_per_month_reshaped/365.0
+    monthly_m3_month_data = monthly_m3_year_array * monthly_part_of_year
+
+    return monthly_m3_month_data
+
+
+def convert_monthly_to_yearly(monthly_m3_month_data):
+    """
+    Convert yearly values from m³/yearly to monthly values in m³/month.
+
+    Parameters
+    ----------
+    monthly_m3_month_data: numpy.ndarray
+        Array containing data for each month with unit m3/month. The shape of
+        the array should be (num_years * 12, size_lat_coords, size_lon_coords).
+    Returns
+    -------
+    monthly_m3_year_data: numpy.ndarray
+        Array containing converted data for each month with unit m3/year. The
+        shape of the array will be (num_years * 12, size_lat_coords,
+        size_lon_coords).
+    """
+
+    days_per_month = \
+        np.array([31.0, 28.0, 31.0, 30.0,
+                  31.0, 30.0, 31.0, 31.0,
+                  30.0, 31.0, 30.0, 31.0], dtype=np.float64)
+    num_years = monthly_m3_month_data.shape[0]
+    days_per_month = np.tile(days_per_month, num_years)
+    days_per_month_reshaped = days_per_month[:, None, None]
+    monthly_part_of_year = days_per_month_reshaped/365.0
+    monthly_m3_year_data = monthly_m3_month_data / monthly_part_of_year
+
+    return monthly_m3_year_data
+
+
 def convert_monthly_to_daily(monthly_data):
     """
     Convert data array unit from m3/month to m3/day.
@@ -47,8 +108,11 @@ def convert_monthly_to_daily(monthly_data):
         The NumPy array with water volumes converted to cubic meters per day.
     """
     # Number of days in each month; February is always 28 days
-    days_per_month = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
-    num_years = int(monthly_data.shape[0] / 12)
+    days_per_month = \
+        np.array([31.0, 28.0, 31.0, 30.0,
+                  31.0, 30.0, 31.0, 31.0,
+                  30.0, 31.0, 30.0, 31.0], dtype=np.int32)
+    num_years = int(monthly_data.shape[0] // 12)
     # Replicate this array to match the total number of years in the data
     days_per_month = np.tile(days_per_month, num_years)
     days_per_month_reshaped = days_per_month[:, None, None]
@@ -112,8 +176,11 @@ def convert_daily_to_monthly(monthly_array_with_daily_values):
         The NumPy array with water volumes converted to cubic meters per day.
     """
     # Number of days in each month; February is always 28 days
-    days_per_month = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
-    num_years = int(monthly_array_with_daily_values.shape[0] / 12)
+    days_per_month = \
+        np.array([31.0, 28.0, 31.0, 30.0,
+                  31.0, 30.0, 31.0, 31.0,
+                  30.0, 31.0, 30.0, 31.0])
+    num_years = int(monthly_array_with_daily_values.shape[0] / 12.0)
     # Replicate this array to match the total number of years in the data
     days_per_month = np.tile(days_per_month, num_years)
     days_per_month_reshaped = days_per_month[:, None, None]
@@ -203,7 +270,7 @@ def convert_daily_to_yearly(daily_values_array, start_year, end_year):
     lon_size = daily_values_array.shape[2]
 
     if time_step == 'yearly':
-        yearly_values = daily_values_array * 365
+        yearly_values = daily_values_array * 365.0
 
     elif time_step == 'monthly':
         monthly_values = convert_daily_to_monthly(daily_values_array)
@@ -217,7 +284,7 @@ def convert_daily_to_yearly(daily_values_array, start_year, end_year):
     return yearly_values
 
 
-def expand_annual_to_monthly(annual_array):
+def expand_array_size(annual_array):
     """
     Expand annual data to monthly resolution.
 
