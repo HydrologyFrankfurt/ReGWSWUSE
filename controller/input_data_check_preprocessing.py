@@ -17,6 +17,8 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 
+from controller import configuration_module as cm
+
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -139,11 +141,11 @@ def check_time_coords(dataset, time_freq, start_year, end_year):
 
         if time_freq == 'monthly':
             expected_times = pd.date_range(
-                start=f'{start_year}-01-01', end=f'{end_year}-12-31', freq='MS'
+                start=f'{min(time_years)}-01-01', end=f'{max(time_years)}-12-31', freq='MS'
             )
         elif time_freq == 'annual':
             expected_times = pd.date_range(
-                start=f'{start_year}-01-01', end=f'{end_year}-12-31', freq='YS'
+                start=f'{min(time_years)}-01-01', end=f'{max(time_years)}-12-31', freq='YS'
             )
 
         if not set(expected_times).issubset(set(time_values)):
@@ -157,7 +159,7 @@ def check_time_coords(dataset, time_freq, start_year, end_year):
     return not_covering_period_flag, incorrect_resolution_flag
 
 
-def check_t_aai_mode_compatibility(correct_irr_with_t_aai_mode, end_year,
+def check_t_aai_mode_compatibility(end_year,
                                    time_extend_mode, irr_consumptive_use_tot):
     """
     Check the compatibility of t_aai_mode with end_year and irr_cu_tot.
@@ -170,7 +172,6 @@ def check_t_aai_mode_compatibility(correct_irr_with_t_aai_mode, end_year,
 
     Parameters
     ----------
-    correct_irr_with_t_aai_mode : bool
         Flag indicating if the correction with t_aai_mode is enabled.
     end_year : int
         The end year for the data processing.
@@ -182,7 +183,6 @@ def check_t_aai_mode_compatibility(correct_irr_with_t_aai_mode, end_year,
 
     Returns
     -------
-    correct_irr_with_t_aai_mode : bool
         The potentially updated flag indicating if the correction with
         t_aai_mode is enabled.
     t_aai_correction_mode_compatibility_flag : bool
@@ -191,26 +191,62 @@ def check_t_aai_mode_compatibility(correct_irr_with_t_aai_mode, end_year,
     """
     t_aai_correction_mode_compatibility_flag = True
 
-    if correct_irr_with_t_aai_mode:
+    if cm.correct_irr_t_aai_mode:
         if end_year < 2016:
-            correct_irr_with_t_aai_mode = False
+            cm.correct_irr_t_aai_mode = False
             t_aai_correction_mode_compatibility_flag = False
-            # print('For simulation period before year 2016, configuration '
-            #       'correct_with_t_aai_mode can’t be used.')
+            print('The configuration correct_with_t_aai_mode can´t be used for'
+                  ' a simulation period that ends before 2016.')
         elif (irr_consumptive_use_tot.time[-1].values <
               np.datetime64('2016-01-01') and not time_extend_mode):
-            correct_irr_with_t_aai_mode = False
+            cm.correct_irr_t_aai_mode = False
             t_aai_correction_mode_compatibility_flag = False
-            # print('Available time period of input data for '
-            #       'irr.consumptive_use_tot is not compatible with '
-            #       'correct_with_t_aai_mode')
+            print('Available time period of input data for '
+                  'irr.consumptive_use_tot is not compatible with '
+                  'correct_with_t_aai_mode')
 
-    return (correct_irr_with_t_aai_mode,
+    return (cm.correct_irr_t_aai_mode,
             t_aai_correction_mode_compatibility_flag)
+
 
 # =============================================================
 # PREPROCESSING FUNCTION
 # =============================================================
+def ensure_correct_dimension_order(xr_data):
+    """
+    Ensure the dimensions of an xarray object are in the correct order.
+
+    The function automatically checks if the 'time' dimension is present
+    and rearranges the dimensions accordingly.
+
+    Parameters
+    ----------
+    xr_array : xarray.DataArray or xarray.Dataset
+        The xarray object to check and transpose if necessary.
+
+    Returns
+    -------
+    xarray.DataArray or xarray.Dataset
+        The xarray object with dimensions in the desired order.
+    """
+    # Get the current dimensions of the xarray object
+    current_dims = tuple(xr_data.dims)
+
+    # Check if 'time' is a dimension
+    if 'time' in current_dims:
+        # Desired order if 'time' is present
+        desired_dims = ("time", "lat", "lon")
+    else:
+        # Desired order if 'time' is not present
+        desired_dims = ("lat", "lon")
+
+    # Check if current dimensions match the desired order
+    if current_dims != desired_dims:
+        # Transpose the xarray object to the desired order
+        xr_data = xr_data.transpose(*desired_dims)
+
+    # Return the transposed xarray object
+    return xr_data
 
 
 def sort_lat_desc_lon_asc_coords(xr_data):
@@ -236,7 +272,6 @@ def sort_lat_desc_lon_asc_coords(xr_data):
         sorted_lat_desc_lon_asc = sorted_lat_desc.sortby('lon', ascending=True)
 
     return sorted_lat_desc_lon_asc
-
 
 
 def trim_xr_data(xr_data, start_year, end_year):
@@ -325,7 +360,8 @@ def initialize_extended_data(xr_data, simulation_time):
         )
     elif isinstance(xr_data, xr.Dataset):
         xr_extended_data = xr.Dataset(
-            {var: (data.dims, np.empty((len(simulation_time), *data.shape[1:])))
+            {var: (data.dims, np.empty((len(simulation_time), *data.shape[1:]))
+                   )
              for var, data in xr_data.data_vars.items()},
             coords={coord: ([coord], simulation_time) if coord == 'time' else
                     (coord, data.values)
@@ -450,13 +486,11 @@ def get_dataset_by_sector_and_variable(datasets, target_sector,
 # CHECK AND PREPROCESSING ALGORITHM
 # =============================================================
 
-
 def check_and_preprocess_input_data(datasets,
                                     conventions,
                                     start_year,
                                     end_year,
-                                    time_extend_mode,
-                                    correct_irr_with_t_aai_mode):
+                                    time_extend_mode):
     """
     Check and preprocess algorithm of input datasets.
 
@@ -521,83 +555,248 @@ def check_and_preprocess_input_data(datasets,
 
     # initialize dict for processed_datasets
     preprocessed_datasets = {}
-
-    if correct_irr_with_t_aai_mode:
-        (correct_irr_with_t_aai_mode,
+    if cm.correct_irr_t_aai_mode:
+        (cm.correct_irr_t_aai_mode,
          t_aai_correction_mode_compatibility_flag) = \
             check_t_aai_mode_compatibility(
-                correct_irr_with_t_aai_mode,
                 end_year,
                 time_extend_mode,
                 get_dataset_by_sector_and_variable(datasets,
                                                    'irrigation',
                                                    'consumptive_use_tot')
                 )
-    for dataset, sector, variable in datasets:
-        # print(sector + '/' + variable)
-        folder_path = sector + '/' + variable
 
+    for dataset, sector, variable in datasets:
+
+        # get input_subfolder_path for dataset for logging
+        folder_path = sector + '/' + variable
+        # =====================================================================
+        # get sector-specific input conventions
         sector_info = sector_requirements.get(sector, {})
         expected_units = sector_info.get("expected_units")
         unit_vars = sector_info.get("unit_vars", [])
         time_freq = sector_info.get("time_freq")
-
-        # check if dataset's variables have expected names and units
+        # =====================================================================
+        # check variable name and unit in dataset
         unknown_name_flag, incorrect_unit_flag = \
             check_variable_metadata(dataset,
                                     reference_names, expected_units, unit_vars)
 
-        # list if checks not passed
+        # list datasets with not expected variable name and incorrect unit
         if unknown_name_flag:
             list_unknown_names_data.append(folder_path)
         if incorrect_unit_flag:
             list_unknown_names_data.append(folder_path)
-
-        # preprocess with regard to spatial coords
+        # =====================================================================
+        # preprocessing and checking the spatial coordinates
         dataset = sort_lat_desc_lon_asc_coords(dataset)
-        # check if 'lat' & 'lon' coords match the coords of rest input data
+
         lat_lon_reference, lat_lon_check_flag = \
             check_lat_lon_coords(dataset, lat_lon_reference)
-
+        # =====================================================================
         # check if dataset covers the period and has correct time resolution.
+
+        # trim dataset to simulation period if it exceeds the period
+
+        # extend dataset if time_extend_mode is true and
+        # it does not cover the period but time resolution is correct
         if variable in time_variant_vars:
             not_covering_period_flag, incorrect_resolution_flag = \
                 check_time_coords(dataset,
                                   time_freq, start_year, end_year)
-
+            # list dataset with incorrect time resolution
             if incorrect_resolution_flag:
-                if not variable == 'time_factor_aai':
-                    list_incorrect_resolution_data.append(folder_path)
+                list_incorrect_resolution_data.append(folder_path)
 
             if not_covering_period_flag:
-                # list_not_covering_period_data.append(folder_path)
-                # preprocess xr_data with regard to the time dimension
-                if time_extend_mode and not incorrect_resolution_flag:
-                    dataset = \
-                        extend_xr_data(dataset, start_year, end_year,
-                                       time_freq)
-                if variable == 'time_factor_aai' and correct_irr_with_t_aai_mode:
-                    extend_xr_data(dataset, start_year, end_year,
-                                   time_freq)
-                else:
-                    list_not_covering_period_data.append(folder_path)
+                if incorrect_resolution_flag:
+                    if variable == 'time_factor_aai':
+                        if cm.correct_irr_t_aai_mode:
+                            dataset = \
+                                extend_xr_data(dataset, start_year, end_year,
+                                               time_freq)
+                            not_covering_period_flag = False
+                        else:
+                            not_covering_period_flag = False
+                    elif time_extend_mode:
+                        dataset = extend_xr_data(dataset, start_year, end_year,
+                                                 time_freq)
+                        not_covering_period_flag = False
             else:
                 dataset = trim_xr_data(dataset, start_year, end_year)
-
+        # list not_covering_period_datasets for logging
+            if not_covering_period_flag:
+                list_not_covering_period_data.append(folder_path)
+        # =====================================================================
+        # ensure correct dimension order
+        dataset = ensure_correct_dimension_order(dataset)
+        # =====================================================================
         if sector not in preprocessed_datasets:
             preprocessed_datasets[sector] = {}
         preprocessed_datasets[sector][variable] = \
-            next(iter(dataset.data_vars.values()))  # dataset.to_array()
-
+            next(iter(dataset.data_vars.values()))  # from xr.ds to xr.array
     check_results = \
-        {"unknown_names_data": list_unknown_names_data,
-         "incorrect_units_data": list_incorrect_units_data,
-         "not_covering_period_data": list_not_covering_period_data,
-         "incorrect_resolution_data": list_incorrect_resolution_data,
-         "compatibility of lat and lon coords": lat_lon_check_flag,
-         "compatibility of correct_irr_with_t_aai_mode": (
+        {"Input data with unknown variable names": list_unknown_names_data,
+         "Input data with incorrect units": list_incorrect_units_data,
+         "Input data which not covers simulation period": (
+             list_not_covering_period_data),
+         "Input data with incorrect time resolution": (
+             list_incorrect_resolution_data),
+         "Compatibility of lat and lon coords is given": lat_lon_check_flag,
+         "Compatibility of correct_irr_t_aai_mode is given": (
              t_aai_correction_mode_compatibility_flag)
          }
 
     return preprocessed_datasets, check_results
+# def check_and_preprocess_input_data(datasets,
+#                                     conventions,
+#                                     start_year,
+#                                     end_year,
+#                                     time_extend_mode,
+#                                     correct_irr_t_aai_mode):
+#     """
+#     Check and preprocess algorithm of input datasets.
 
+#     Parameters
+#     ----------
+#     datasets : list of tuples
+#         A list containing tuples of (dataset, sector, variable).
+#     conventions : dict
+#         A dictionary containing conventions and sector requirements.
+#     start_year : int
+#         The start year for the data processing.
+#     end_year : int
+#         The end year for the data processing.
+#     time_extend_mode : bool
+#         If True, the data is extended to include years before the start year
+#         and after the end year. If False, the data is trimmed to the specified
+#         date range.
+
+#     Returns
+#     -------
+#     preprocessed_datasets : dict
+#         A dictionary of preprocessed datasets by sector and variable.
+#     check_results : dict
+#         A dictionary containing results of the checks performed on the input
+#         data.
+
+#     Notes
+#     -----
+#     This function performs the following steps:
+#     1. Initializes conventions and check flags.
+#     2. Checks compatibility of `t_aai_mode` with the end year and input data.
+#     3. Checks if dataset variable names are in reference variable names and
+#        units of unit variables.
+#     4. Logs datasets that do not pass the checks for variable names and units.
+#     5. Sorts spatial coordinates in each dataset.
+#     6. Checks whether spatial coordinates in every dataset are the same
+#        (necessary for model simulation).
+#     7. Checks only time-variant variable datasets for correct time resolution
+#        and if the dataset covers the simulation period.
+#     8. Extends not-covering-period datasets with original data of the first
+#        and last year, if the time resolution of the data is correct.
+#     9. Trims datasets to the specified period if they cover the simulation
+#        period.
+#     10. Adds preprocessed datasets to the results dictionary.
+#     11. Creates and returns a dictionary of check results.
+#     """
+#     # initialize conventions
+#     reference_names = conventions['reference_names']
+#     time_variant_vars = conventions['time_variant_vars']
+#     sector_requirements = conventions['sector_requirements']
+
+#     # initialize flag and reference for lat lon check
+#     lat_lon_check_flag = True
+#     lat_lon_reference = None
+#     # initialize flag for compatibility check of t_aai
+#     t_aai_correction_mode_compatibility_flag = True
+#     # initialize list for logging data that does not pass the checks
+#     list_unknown_names_data = []
+#     list_incorrect_units_data = []
+#     list_not_covering_period_data = []
+#     list_incorrect_resolution_data = []
+
+#     # initialize dict for processed_datasets
+#     preprocessed_datasets = {}
+
+#     if correct_irr_t_aai_mode:
+#         (correct_irr_t_aai_mode,
+#          t_aai_correction_mode_compatibility_flag) = \
+#             check_t_aai_mode_compatibility(
+#                 correct_irr_t_aai_mode,
+#                 end_year,
+#                 time_extend_mode,
+#                 get_dataset_by_sector_and_variable(datasets,
+#                                                    'irrigation',
+#                                                    'consumptive_use_tot')
+#                 )
+#     for dataset, sector, variable in datasets:
+#         if variable == "time_factor_aai":
+            
+#             continue
+#         # print(sector + '/' + variable)
+#         folder_path = sector + '/' + variable
+
+#         sector_info = sector_requirements.get(sector, {})
+#         expected_units = sector_info.get("expected_units")
+#         unit_vars = sector_info.get("unit_vars", [])
+#         time_freq = sector_info.get("time_freq")
+
+#         # check if dataset's variables have expected names and units
+#         unknown_name_flag, incorrect_unit_flag = \
+#             check_variable_metadata(dataset,
+#                                     reference_names, expected_units, unit_vars)
+
+#         # list if checks not passed
+#         if unknown_name_flag:
+#             list_unknown_names_data.append(folder_path)
+#         if incorrect_unit_flag:
+#             list_unknown_names_data.append(folder_path)
+
+#         # preprocess with regard to spatial coords
+#         dataset = sort_lat_desc_lon_asc_coords(dataset)
+#         # check if 'lat' & 'lon' coords match the coords of rest input data
+#         lat_lon_reference, lat_lon_check_flag = \
+#             check_lat_lon_coords(dataset, lat_lon_reference)
+
+#         # check if dataset covers the period and has correct time resolution.
+#         if variable in time_variant_vars:
+#             not_covering_period_flag, incorrect_resolution_flag = \
+#                 check_time_coords(dataset,
+#                                   time_freq, start_year, end_year)
+
+#             if incorrect_resolution_flag:
+#                 if not variable == 'time_factor_aai':
+#                     list_incorrect_resolution_data.append(folder_path)
+
+#             if not_covering_period_flag:
+#                 # list_not_covering_period_data.append(folder_path)
+#                 # preprocess xr_data with regard to the time dimension
+#                 if time_extend_mode and not incorrect_resolution_flag:
+#                     dataset = \
+#                         extend_xr_data(dataset, start_year, end_year,
+#                                        time_freq)
+#                 if variable == 'time_factor_aai' and correct_irr_t_aai_mode:
+#                     extend_xr_data(dataset, start_year, end_year,
+#                                    time_freq)
+#                 else:
+#                     list_not_covering_period_data.append(folder_path)
+#             else:
+#                 dataset = trim_xr_data(dataset, start_year, end_year)
+
+#         if sector not in preprocessed_datasets:
+#             preprocessed_datasets[sector] = {}
+#         preprocessed_datasets[sector][variable] = \
+#             next(iter(dataset.data_vars.values()))  # dataset.to_array()
+
+#     check_results = \
+#         {"unknown_names_data": list_unknown_names_data,
+#          "incorrect_units_data": list_incorrect_units_data,
+#          "not_covering_period_data": list_not_covering_period_data,
+#          "incorrect_resolution_data": list_incorrect_resolution_data,
+#          "compatibility of lat and lon coords": lat_lon_check_flag,
+#          "compatibility of correct_irr_t_aai_mode": (
+#              t_aai_correction_mode_compatibility_flag)
+#          }
+
+#     return preprocessed_datasets, check_results

@@ -28,7 +28,7 @@ modname = modname.split('.')[0]
 # ++++++++++++++++++++++++++++++++++++++++++++++++
 # Parsing  Argguments for CLI from cli_args module
 # +++++++++++++++++++++++++++++++++++++++++++++++++
-args = cli.parse_cli()
+# args = cli.parse_cli()
 
 # ===============================================================
 # Reading in configuration file and handling file related errors)
@@ -54,24 +54,25 @@ def config_handler(filename):
         with open(filename) as config:
             config_content = json.load(config)
     except FileNotFoundError:
-        log.config_logger(logging.ERROR, modname, 'Configuration file '
-                            'not found', args.debug)
+        # log.config_logger(logging.ERROR, modname, 'Configuration file '
+        #                     'not found', args.debug)
         sys.exit()  # don't run code if cofiguration file does not exist
     else:
-        print('Configuration loaded successfully')
+        print('\n' + 'Configuration loaded successfully' + '\n')
     return config_content
 
 
-# test_filename = ("C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/"
-#                  "gwswuse_configuration.json")
-config_file = config_handler(args.name)
-# config_file = config_handler(test_filename)
+test_filename = ("C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/"
+                  "gwswuse_config_compare.json")
+# config_file = config_handler(args.name)
+config_file = config_handler(test_filename)
 
 # =============================================================================
 # Get path for water use and gwswuse static data
 # =============================================================================
 input_dir = config_file['FilePath']['inputDir']
 
+input_data_path = input_dir['input_data']
 gwswuse_convention_path = input_dir['gwswuse_convention']
 
 output_dir = config_file['FilePath']['outputDir']
@@ -85,7 +86,10 @@ simulation_options = \
 time_extend_mode = \
     simulation_options['time_extend_mode']
 
-correct_irr_with_t_aai_mode = \
+irrigation_input_based_on_aei = \
+    simulation_options['irrigation_input_based_on_aei']
+
+correct_irr_t_aai_mode = \
     simulation_options['correct_irr_simulation_by_t_aai']
 
 efficiency_gw_mode = \
