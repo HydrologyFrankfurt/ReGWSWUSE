@@ -1,35 +1,36 @@
 {
   "FilePath": {
     "inputDir": {
-      "input_data": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/input_data/",
-      "gwswuse_convention": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/gwswuse_convention_new.json"
+      "input_data": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/input_04_09_gwswuse/",
+      "gwswuse_convention": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/regwswuse_convention.json"
     },
-    "outputDir": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/output_data/"
+    "outputDir": "C:/Users/lniss/Desktop/ln13foqy/26_09_regwswuse_output/"
   },
   "RuntimeOptions":{
       "SimulationOption": {
         "time_extend_mode": false,
         "irrigation_efficiency_gw_mode": "enforce",
+        "irrigation_input_based_on_aei": false,
         "correct_irr_simulation_by_t_aai": false,
-        "deficit_irrigation_mode": true
+        "deficit_irrigation_mode": true 
       },
       "ParameterSetting": {
         "efficiency_gw_threshold": 0.7,
         "deficit_irrigation_factor": 0.7
       },
       "SimulationPeriod":{
-        "start": 2000, 
-        "end": 2010
+        "start": 1901, 
+        "end": 1905
       }
   },
   "OutputSelection": {
-    "WGHM_input_run": true,
+    "WGHM_input_run": false,
     "Sectors": {
       "total": true,
       "irrigation": false,
       "domestic": false,
       "manufacturing": false,
-      "thermal power": false,
+      "thermal_power": false,
       "livestock": false
     },
     "GWSWUSE variables": {
@@ -50,6 +51,7 @@
       },
       "deficit_irrigation_location": false
     },
-    "Global_Annual_Totals": false
+    "Global_Annual_Totals": true
   }
 }
+

@@ -5,6 +5,7 @@
         "abstraction_irr_part_mask", "time_factor_aai",
         "pirr-cu-tot", "gw_fraction_irrigation", "gw_return_fraction_irrigation",
         "time_factor_aai", "irr_efficiency_sw", "irrigation_wu_over_5pct_mask",
+        "quotient_aai_aei","fraction_aai_aei",
         "gw_depletion_over_5mm_mask",
         "pdom-cu-tot", "pdom-ww-tot", "gw_fraction_domestic",
         "pman-ww-tot", "pman-cu-tot", "gw_fraction_manufacturing",
@@ -12,7 +13,7 @@
         "pliv-cu-tot"
     ],
     "time_variant_vars": [
-        "consumptive_use_tot", "abstraction_tot", "time_factor_aai"
+        "consumptive_use_tot", "abstraction_tot", "time_factor_aai", "fraction_aai_aei"
     ],
     "sector_requirements": {
         "irrigation": {
@@ -21,7 +22,7 @@
             "expected_vars": [
                 "consumptive_use_tot", "fraction_gw_use", "fraction_return_gw",
                 "irrigation_efficiency_sw", "gwd_mask", "abstraction_irr_part_mask",
-                "time_factor_aai"
+                "time_factor_aai", "fraction_aai_aei"
             ],
             "unit_vars": ["consumptive_use_tot"]
         },
