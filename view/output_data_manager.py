@@ -25,7 +25,7 @@ modname = (os.path.basename(__file__))
 modname = modname.split('.')[0]
 
 # ===============================================================
-# OUTPUT DATA MANAGER MAIN FUNCTION
+# OUTPUT DATA MANAGER SUB FUNCTION
 # ===============================================================
 
 
@@ -61,14 +61,15 @@ def initialize_output_selection(output_selection):
         for var_type, is_enabled in (settings.items()
         if isinstance(settings, dict) else [(None, settings)])
         if is_enabled]
-
+    
+    # wghm_input_vars = []
     # if output_selection['WGHM_input_run']:
-    #     if 'total' not in output_sector_sel:
-    #         output_sector_sel.append('total')
+    #     wghm_input_vars
 
     global_annual_total_flag = output_selection['Global_Annual_Totals']
 
-    return output_sector_sel, output_vars_sel, global_annual_total_flag
+    return (output_sector_sel, output_vars_sel, global_annual_total_flag)
+            # wghm_input_flag) 
 
 
 def get_selected_var_results_as_xr(output_sector_sel,
@@ -98,10 +99,10 @@ def get_selected_var_results_as_xr(output_sector_sel,
             var_np_result = getattr(sector_obj, var_name, None)
             if var_np_result is not None:
                 var_xr_result = \
-                    odp.write_to_xr_dataset(var_np_result,
-                                            sector_obj.coords,
-                                            var_name,
-                                            sector_name)
+                    odp.write_to_xr_dataarray(var_np_result,
+                                              sector_obj.coords,
+                                              var_name,
+                                              sector_name)
                 var_name = sector_name + '_' + var_name
                 output_xr_data[var_name] = var_xr_result
 
@@ -182,7 +183,7 @@ def save_global_annual_totals_to_excel(output_dir, var_dict):
         for variable_name, df in var_dict.items():
             df.to_excel(writer, sheet_name=variable_name)
 
-    print(f"Excel file '{filename}' has been created with multiple sheets.")
+    print(f"\n Excel file '{filename}' has been created with multiple sheets.")
 
 # ===============================================================
 # OUTPUT DATA MANAGER MAIN FUNCTION
@@ -210,21 +211,30 @@ def output_data_manager(gwswuse_results,
     end_year : int
         The end year of the simulation period.
     """
+    # initialize output selection
     output_sector_sel, output_vars_sel, global_annual_total_flag = \
         initialize_output_selection(output_selection)
 
-    output_xr_data = get_selected_var_results_as_xr(output_sector_sel,
-                                                    output_vars_sel,
-                                                    gwswuse_results)
-    save_datasets_to_netcdf(output_dir, output_xr_data)
-
+    # create global annual totals
     if global_annual_total_flag:
         df_global_annual_totals = \
             odp.sum_global_annual_totals(gwswuse_results, start_year, end_year)
 
         save_global_annual_totals_to_excel(output_dir, df_global_annual_totals)
 
+   
+
+    output_xr_data = get_selected_var_results_as_xr(output_sector_sel,
+                                                    output_vars_sel,
+                                                    gwswuse_results)
+    save_datasets_to_netcdf(output_dir, output_xr_data)
+
+    
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    output_data_manager(cm.output_selection, cm.output_dir, gwswuse_results)
+    output_data_manager(gwswuse_results,
+                        cm.output_selection,
+                        cm.output_dir,
+                        cm.start_year,
+                        cm.end_year)

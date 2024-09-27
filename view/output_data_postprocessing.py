@@ -16,18 +16,22 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import xarray as xr
+from termcolor import colored
+from colorama import init
 
 from controller import configuration_module as cm
 from model import time_unit_conversion as tc
-from view import gwswuse_var_info as var_info
+from view import regwswuse_var_info as var_info
 from misc import watergap_version
 
+
+init()
 # =============================================================================
 # FUNCTIONS TO CREATE XR DATATSET FOR OUTPUT IN NETCDF FORMAT
 # =============================================================================
 
 
-def write_to_xr_dataset(result_np, coords, variable_name, sector):
+def write_to_xr_dataarray(result_np, coords, variable_name, sector):
     """
     Write the model results contained in a NumPy array to an xarray dataset.
 
@@ -49,7 +53,7 @@ def write_to_xr_dataset(result_np, coords, variable_name, sector):
 
     Returns
     -------
-    xr.Dataset
+    xr.DataArray
         An xarray dataset with the model results and appropriate metadata.
     """
     monthly_sector = ['irrigation', 'total']
@@ -65,15 +69,20 @@ def write_to_xr_dataset(result_np, coords, variable_name, sector):
         if sector in monthly_sector:
             # convert to m3/month
             result_np = tc.convert_daily_to_monthly(result_np)
+            result_np = result_np
         else:
             # convert to m3/year
-            result_np = result_np * 365
+            result_np = result_np * 365.0
         result_xr = xr.Dataset(coords=coords)
         result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
 
-    result_xr[variable_name] = xr.DataArray(result_np, coords=coords)
-    result_xr[variable_name].attrs = \
-        set_variable_metadata_xr(sector, variable_name)
+    variable_metadata = set_variable_metadata_xr(sector, variable_name)
+    xr_var_name = variable_metadata['standard_name']
+    del variable_metadata['standard_name']
+
+    result_xr[xr_var_name] = \
+        xr.DataArray(result_np, coords=coords)
+    result_xr[xr_var_name].attrs = variable_metadata
 
     # result_xr = set_dimension_attributes(result_xr, sector)
 
@@ -113,39 +122,14 @@ def set_variable_metadata_xr(sector, var):
     """
     irrigation_specific_vars = ['irrigation_efficiency_gw',
                                 'irrigation_efficiency_sw',
-                                'deficit_irrigation_location']
-
-    sector_metadata = var_info.sector_metadata_dict[sector]
-    var_metadata = var_info.modelvars[var].copy()
+                                'deficit_irrigation_location',
+                                'fraction_aai_aei',
+                                'time_factor_aai']
 
     if sector == 'irrigation' and var in irrigation_specific_vars:
-        return var_metadata
+        return var_info.modelvars[var]
     else:
-        var_metadata['standard_name'] = var_metadata['standard_name'].format(
-            sector_isimip=sector_metadata['sector_isimip']
-        )
-        var_metadata['long_name'] = var_metadata['long_name'].format(
-            sector_name=sector_metadata['sector_name']
-        )
-        var_metadata['gwswuse_code_name'] = \
-            var_metadata['gwswuse_code_name'].format(
-                sector_watergap=sector_metadata['sector_watergap']
-                )
-        var_metadata['description'] = var_metadata['description'].format(
-            timestep=sector_metadata['timestep'],
-            sector_name_low=sector_metadata['sector_name'].lower()
-        )
-        if 'wghm_code_name' in var_metadata:
-            var_metadata['wghm_code_name'] = \
-                var_metadata['wghm_code_name'].format(
-                    _sector=sector_metadata['_sector'])
-
-        if sector in ['irrigation', 'total']:
-            var_metadata['units'] = 'm3/month'
-        else:
-            var_metadata['units'] = 'm3/year'
-
-    return var_metadata
+        return var_info.modelvars[var][sector]
 
 
 def set_dimension_attributes(xr_array, sector):
@@ -348,6 +332,7 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
         'net_abstraction_gw', 'net_abstraction_sw'
     ]
 
+    print('\n' + colored(f'Global Totals for year {cm.start_year}', 'cyan'))
     # Iterate over each variable in the list
     for var_name in global_annual_totals_vars:
         # Create an empty dataframe to store annual totals for each sector
@@ -376,6 +361,9 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
 
             # Add the annual totals for the current sector to the dataframe
             var_df[sector] = annual_totals
+        print('\n' + colored(f'{var_name}:', 'yellow'))
+        for sector, var_value in var_df.iloc[0, :].items():
+            print(f"{sector}: {var_value} km3/year")
 
         # Add the dataframe for the current variable to the global_annuals_dict
         global_annuals_dict[var_name] = var_df
