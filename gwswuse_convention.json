@@ -1,16 +1,25 @@
 {
     "reference_names": [
-        "consumptive_use_tot", "abstraction_tot", "irrigation_efficiency_sw",
-        "fraction_gw_use", "fraction_return_gw", "gwd_mask",
-        "abstraction_irr_part_mask", "time_factor_aai",
-        "pirr-cu-tot", "gw_fraction_irrigation", "gw_return_fraction_irrigation",
-        "time_factor_aai", "irr_efficiency_sw", "irrigation_wu_over_5pct_mask",
-        "quotient_aai_aei","fraction_aai_aei",
-        "gw_depletion_over_5mm_mask",
-        "pdom-cu-tot", "pdom-ww-tot", "gw_fraction_domestic",
-        "pman-ww-tot", "pman-cu-tot", "gw_fraction_manufacturing",
-        "ptp-ww-tot", "ptp-cu-tot",
-        "pliv-cu-tot"
+        "pdomuse", "pdomww",
+        "pdomfractgwuse",
+        "pmanuse", "pmanww",
+        "pmanfractgwuse",
+        "pirruse", "pirrww",
+        "pirrfractgwuse", "pirrfractreturngw",
+        "irr_abstraction_part_5pct_mask", "gwd_5mm_mask",
+        "plivuse",
+        "ptpuse", "ptpww",
+        "p_dom_consumptive_use_tot", "p_dom_abstraction_tot",
+        "dom_fraction_gw_use",
+        "p_man_consumptive_use_tot", "p_man_abstraction_tot",
+        "man_fraction_gw_use",
+        "p_irr_consumptive_use_tot",
+        "irr_fraction_gw_use","irr_fraction_return_gw",
+        "abstraction_irr_mask", "gwd_mask",
+        "irr_efficiency_sw",
+        "fraction_aai_aei", "time_factor_aai",
+        "p_liv_consumptive_use_tot",
+        "p_tp_consumptive_use_tot", "p_tp_abstraction_tot"
     ],
     "time_variant_vars": [
         "consumptive_use_tot", "abstraction_tot", "time_factor_aai", "fraction_aai_aei"

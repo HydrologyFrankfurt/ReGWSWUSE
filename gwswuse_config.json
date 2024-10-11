@@ -1,10 +1,10 @@
 {
   "FilePath": {
     "inputDir": {
-      "input_data": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/input_04_09_gwswuse/",
-      "gwswuse_convention": "C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/regwswuse_convention.json"
+      "input_data": "./input_data_folder/input_gwswuse_gim_aai_1901_1905/",
+      "gwswuse_convention": "./gwswuse_convention.json"
     },
-    "outputDir": "C:/Users/lniss/Desktop/ln13foqy/26_09_regwswuse_output/"
+    "outputDir": "./output_data/test/"
   },
   "RuntimeOptions":{
       "SimulationOption": {
@@ -21,6 +21,15 @@
       "SimulationPeriod":{
         "start": 1901, 
         "end": 1905
+      },
+      "CellSpecificOutput": {
+        "Flag": true,
+        "coords": {
+          "lat": 30.75,
+          "lon": 30.75,
+          "year": 1901,
+          "month": 5
+       }
       }
   },
   "OutputSelection": {
