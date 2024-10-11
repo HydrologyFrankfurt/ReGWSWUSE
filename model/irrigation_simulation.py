@@ -11,6 +11,7 @@
 
 """ GWSWUSE irrigation simulation module."""
 
+import time
 import xarray as xr
 from controller import configuration_module as cm
 from model import model_equations as me
@@ -96,7 +97,7 @@ class IrrigationSimulator:
         (input)
     """
 
-    def __init__(self, irr_data, cm):
+    def __init__(self, irr_data):
         """
         Initialize the IrrigationSimulator with data and run the simulation.
 
@@ -167,10 +168,13 @@ class IrrigationSimulator:
         # Run the irrigation simulation
         self.simulate_irrigation()
 
-        # print("\nIrrigation simulation was performed. \n ")
+        print("\nIrrigation simulation was performed. \n ")
 
-    def simulate_irrigation(self, cm):
-        """Run irrigation simulation with provided data and model equations."""
+    def simulate_irrigation(self):
+        """
+        Run the irrigation simulation with provided data and model equations.
+        """
+
         if cm.cell_specific_output['Flag']:
             print('irr_cu_tot_m3_month: '
                   f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
@@ -287,13 +291,11 @@ if __name__ == "__main__":
     # from controller import configuration_module as cm
     from controller import input_data_manager as idm
 
-     preprocessed_gwswuse_data, _, _, _ = \
-         input_data_manager(cm.input_data_path,
-                            cm.gwswuse_convention_path,
-                            cm.start_year,
-                            cm.end_year,
-                            cm.correct_irr_t_aai_mode,
-                            cm.time_extend_mode
-                            )
-
-    irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'], cm)
+    preprocessed_gwswuse_data, _, _, _ = \
+        idm.input_data_manager(cm.input_data_path,
+                               cm.gwswuse_convention_path,
+                               cm.start_year,
+                               cm.end_year,
+                               cm.time_extend_mode
+                               )
+    irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'])

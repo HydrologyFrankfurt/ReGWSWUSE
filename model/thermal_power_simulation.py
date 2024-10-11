@@ -10,7 +10,9 @@
 # =============================================================================
 
 """ GWSWUSE thermal power simulation module."""
+# from source.controller import configuration_module as cm
 
+import time
 import xarray as xr
 from controller import configuration_module as cm
 from model import model_equations as me
@@ -86,6 +88,7 @@ class ThermalPowerSimulator:
             Dictionary containing xarray.DataArrays for various thermal power
             variables.
         """
+
         # Set total consumptive use input [m3/year]
         self.consumptive_use_tot = tp_data['consumptive_use_tot'].values
 
@@ -120,10 +123,12 @@ class ThermalPowerSimulator:
         # Run the irrigation simulation
         self.simulate_thermal_power()
 
-        # print("Thermal power simulation was performed. \n")
+        print("Thermal power simulation was performed. \n")
 
     def simulate_thermal_power(self):
-        """Run thermal power simulation with provided data and model equations."""
+        """
+        Run thermal power simulation with provided data and model equations.
+        """
         if cm.cell_specific_output['Flag']:
             print('tp_cu_tot_m3_year:'
                   f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
@@ -187,6 +192,9 @@ class ThermalPowerSimulator:
                   f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
             print('tp_na_sw_m3_day:'
                   f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('tp_na_tot_m3_day:'
+                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+
 
 
 if __name__ == "__main__":
@@ -194,12 +202,11 @@ if __name__ == "__main__":
     from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.correct_irr_t_aai_mode,
-                           cm.time_extend_mode
-                           )
-
+        idm.input_data_manager(cm.input_data_path,
+                               cm.gwswuse_convention_path,
+                               cm.start_year,
+                               cm.end_year,
+                               cm.time_extend_mode,
+                               cm.correct_irr_with_t_aai_mode
+                               )
     tp = ThermalPowerSimulator(preprocessed_gwswuse_data['thermal_power'])

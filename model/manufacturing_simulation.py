@@ -121,10 +121,12 @@ class ManufacturingSimulator:
         # Run the irrigation simulation
         self.simulate_manufacturing()
 
-        # print("Manufacturing simulation was performed. \n")
+        print("Manufacturing simulation was performed. \n")
 
     def simulate_manufacturing(self):
-        """Run manufacturing simulation with provided data and model equations."""
+        """
+        Run manufacturing simulation with provided data and model equations.
+        """
         if cm.cell_specific_output['Flag']:
             print('man_cu_tot_m3_year:'
                   f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
@@ -188,6 +190,8 @@ class ManufacturingSimulator:
                   f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
             print('man_na_sw_m3_day:'
                   f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('man_na_tot_m3_day:'
+                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
 
 
 
@@ -196,11 +200,10 @@ if __name__ == "__main__":
     from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.correct_irr_t_aai_mode,
-                           cm.time_extend_mode
-                           )
+        idm.input_data_manager(cm.input_data_path,
+                               cm.gwswuse_convention_path,
+                               cm.start_year,
+                               cm.end_year,
+                               cm.time_extend_mode
+                               )
     man = ManufacturingSimulator(preprocessed_gwswuse_data['manufacturing'])

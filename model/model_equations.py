@@ -12,8 +12,11 @@
 """GWSWUSE model equations for numpy arrays."""
 
 import os
+# import logging
 from numba import njit
+# import xarray as xr
 import numpy as np
+# import watergap_logger as log
 from model import time_unit_conversion as tc
 
 # ===============================================================aqq

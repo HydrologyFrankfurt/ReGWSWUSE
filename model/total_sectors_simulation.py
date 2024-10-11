@@ -12,6 +12,7 @@
 """ GWSWUSE total sectors simulation module."""
 
 import os
+import time
 
 from controller import configuration_module as cm
 from model import model_equations as me
@@ -93,6 +94,8 @@ class TotalSectorsSimulator():
         liv : SectorData
             Livestock sector data.
         """
+        start_time = time.time()
+
         # Sum total consumptive use across all sectors
         self.consumptive_use_tot = \
             me.sum_volume_per_time_variable(irr.consumptive_use_tot,
@@ -212,10 +215,16 @@ class TotalSectorsSimulator():
                   f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
             print('total_na_sw_m3_day:'
                   f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('total_na_tot_m3_day:'
+                  f'{self.net_abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
 
             print('total_f_gw_use:'
                   f'{self.fraction_gw_use[self.time_idx, self.lat_idx, self.lon_idx]}')
             print('total_f_gw_return:'
                   f'{self.fraction_return_gw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+            
+            
+            
 
-        # print("Cross-sector total simulation was performed. \n")
+        end_time = time.time()  # Endzeit messen
+        print("Cross-sector total simulation was performed. \n")

@@ -13,12 +13,11 @@
 
 import time
 import xarray as xr
-import numpy as np
 from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
-    
+
 class LivestockSimulator:
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
@@ -76,6 +75,7 @@ class LivestockSimulator:
         Coordinates from the original dataset.
         (input)
     """
+
     def __init__(self, liv_data):
         """
         Initialize the LivestockSimulator with data and run the simulation.
@@ -124,10 +124,12 @@ class LivestockSimulator:
         # Run the irrigation simulation
         self.simulate_livestock()
 
-        # print("Livestock simulation was performed. \n")
+        print("Livestock simulation was performed. \n")
 
     def simulate_livestock(self):
-        """Run livestock simulation with provided data and model equations."""
+        """
+        Run the livestock simulation with provided data and model equations.
+        """
         if cm.cell_specific_output['Flag']:
             print('liv_cu_tot_m3_year:'
                   f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
@@ -191,18 +193,21 @@ class LivestockSimulator:
                   f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
             print('liv_na_sw_m3_day:'
                   f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_na_tot_m3_day:'
+                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+
 
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    from controller.input_data_manager import input_data_manager
+    from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.correct_irr_t_aai_mode,
-                           cm.time_extend_mode
-                           )
+        idm.input_data_manager(cm.input_data_path,
+                               cm.gwswuse_convention_path,
+                               cm.start_year,
+                               cm.end_year,
+                               cm.time_extend_mode,
+                               cm.correct_irr_with_t_aai_mode
+                               )
     liv = LivestockSimulator(preprocessed_gwswuse_data['livestock'])

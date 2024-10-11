@@ -61,34 +61,32 @@ def convert_yearly_to_monthly(annual_m3_year_data):
 
 def convert_monthly_to_yearly(monthly_m3_month_data):
     """
-    Convert monthly values in m³/month to yearly values in m³/year.
+    Convert yearly values from m³/yearly to monthly values in m³/month.
 
     Parameters
     ----------
     monthly_m3_month_data: numpy.ndarray
         Array containing data for each month with unit m3/month. The shape of
         the array should be (num_years * 12, size_lat_coords, size_lon_coords).
-
     Returns
     -------
-    yearly_m3_year_data: numpy.ndarray
-        Array containing converted data for each year with unit m3/year. The
-        shape of the array will be (num_years, size_lat_coords,
+    monthly_m3_year_data: numpy.ndarray
+        Array containing converted data for each month with unit m3/year. The
+        shape of the array will be (num_years * 12, size_lat_coords,
         size_lon_coords).
     """
-    # calculate number of years
-    num_years = monthly_m3_month_data.shape[0] // 12
-    lat_size = monthly_m3_month_data.shape[1]
-    lon_size = monthly_m3_month_data.shape[2]
 
-    yearly_m3_year_data = np.full((num_years, lat_size, lon_size), np.nan)
-    for year in range(num_years):
-        start_idx = year * 12
-        end_idx = start_idx + 12
-        yearly_m3_year_data[year] = \
-            np.sum(monthly_m3_month_data[start_idx:end_idx], axis=0)
+    days_per_month = \
+        np.array([31.0, 28.0, 31.0, 30.0,
+                  31.0, 30.0, 31.0, 31.0,
+                  30.0, 31.0, 30.0, 31.0], dtype=np.float64)
+    num_years = monthly_m3_month_data.shape[0]
+    days_per_month = np.tile(days_per_month, num_years)
+    days_per_month_reshaped = days_per_month[:, None, None]
+    monthly_part_of_year = days_per_month_reshaped/365.0
+    monthly_m3_year_data = monthly_m3_month_data / monthly_part_of_year
 
-    return yearly_m3_year_data
+    return monthly_m3_year_data
 
 
 def convert_monthly_to_daily(monthly_data):
