@@ -27,7 +27,7 @@ from model.total_sectors_simulation import TotalSectorsSimulator
 from view.output_data_manager import output_data_manager
 
 
-def run_regwswuse():
+def run_gwswuse():
     """Run the linking module GWSWUSE of WaterGAP."""
     start_time = time.time()
     # Load, check and preprocess input data with input_data_manager
@@ -36,9 +36,10 @@ def run_regwswuse():
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,
+                               cm.correct_irr_t_aai_mode,
                                cm.time_extend_mode
                                )
-    print('GWSWUSE simulation starts ...')
+    print(f"GWSWUSE simulation starts from {cm.start_year} to {cm.end_year}\n")
     # Sector-specific simulations
     irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'])
     dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])
@@ -66,7 +67,7 @@ def run_regwswuse():
 
 
 if __name__ == "__main__":
-    gwswuse_check_results, gwswuse_results = \
-        run_regwswuse()
+    gwswuse_input_check_results, gwswuse_results_output = \
+        run_gwswuse()
     # preprocessed_gwswuse_data, gwswuse_check_results = \
     #     run_regwswuse()

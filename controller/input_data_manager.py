@@ -25,7 +25,7 @@ from controller.input_data_check_preprocessing import \
 # Get module name and remove the .py extension
 # Module name is passed to logger
 # =============================================================================
-modname = (os.path.basename(__file__))
+modname = os.path.basename(__file__)
 modname = modname.split('.')[0]
 
 
@@ -54,8 +54,6 @@ def load_conventions(convention_path):
     except FileNotFoundError:
         print("Input data convention file not found.")  # Logging
         sys.exit()
-    else:
-        print('Input data convention loaded successfully \n')
     return conventions
 
 
@@ -104,14 +102,18 @@ def load_netcdf_files(input_data_path, sector_requirements):
 # =============================================================================
 
 def check_results_handling(check_results):
+    """Handle input data check results."""
     for key, value in check_results.items():
-        print(f"{key}:")
+        pass
+        # print(f"{key}:")
         if isinstance(value, list) and value:
             for item in value:
-                print(f"  - {item}")
+                pass
+        #         print(f"  - {item}")
         else:
-            print(f"  {value}")
-        print()  # Leere Zeile zur besseren Lesbarkeit  # Logging
+            pass
+        #     print(f"  {value}")
+        # print()  # Leere Zeile zur besseren Lesbarkeit  # Logging
 
 # =============================================================================
 # INPUT DATA MANAGER MAIN FUNCTION
@@ -122,10 +124,10 @@ def input_data_manager(input_data_path,
                        convention_path,
                        start_year,
                        end_year,
+                       correct_irr_t_aai_mode,
                        time_extend_mode):
     """
-    Manage input data by loading, checking, and preprocessing it according to
-    specified conventions.
+    Manage the loading, checking and pre-processing of input data.
 
     Parameters
     ----------
@@ -168,29 +170,28 @@ def input_data_manager(input_data_path,
     sector_requirements = conventions['sector_requirements']
 
     # load input data
-    print('Netcdf data will loading from:' + f'\n{input_data_path}\n')
     datasets = load_netcdf_files(input_data_path, sector_requirements)
 
-
     # check and preprocess input_data
-    print('Check and preprocess input data ...')
-    preprocessed_data, check_results = \
+    print('Checking and preprocessing input data ...\n')
+    preprocessed_data, correct_irr_t_aai_mode, check_results = \
         check_and_preprocess_input_data(datasets,
                                         conventions,
                                         start_year,
                                         end_year,
+                                        correct_irr_t_aai_mode,
                                         time_extend_mode)
 
     check_results_handling(check_results)
+
+    print('Input data check and preprocessing completed.\n')
 
     return preprocessed_data, check_results, datasets, conventions
 
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    input_data_path = 'C:/Users/lniss/Desktop/ReGWSWUSE_LN/input_04_09_gwswuse/'
-    CONVENTION_PATH = \
-        'C:/Users/lniss/Desktop/ReGWSWUSE_LN/source/gwswuse_convention_new.json'
+
     (preprocessed_gwswuse_data,
      gwswuse_check_results,
      input_datasets,
@@ -200,5 +201,6 @@ if __name__ == "__main__":
                            cm.gwswuse_convention_path,
                            cm.start_year,
                            cm.end_year,
+                           cm.correct_irr_t_aai_mode,
                            cm.time_extend_mode
                            )

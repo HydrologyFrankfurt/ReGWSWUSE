@@ -21,7 +21,7 @@ from view import output_data_postprocessing as odp
 # Get module name and remove the .py extension
 # Module name is passed to logger
 # # =============================================================
-modname = (os.path.basename(__file__))
+modname = os.path.basename(__file__)
 modname = modname.split('.')[0]
 
 # ===============================================================
@@ -45,8 +45,12 @@ def initialize_output_selection(output_selection):
         List of selected sectors.
     output_vars_sel : list
         List of selected variables.
+    wghm_input_flag : bool
+        Flag indicating whether dict with wghm input variables in xr.DataArray
+        format should be kept in memory.
     global_annual_total_flag : bool
-        Flag indicating whether to calculate global annual totals.
+        Flag indicating whether to calculate and save global annual totals.
+
     """
     output_sector_sel = \
         [sector_name
@@ -61,37 +65,41 @@ def initialize_output_selection(output_selection):
         for var_type, is_enabled in (settings.items()
         if isinstance(settings, dict) else [(None, settings)])
         if is_enabled]
-    
-    # wghm_input_vars = []
-    # if output_selection['WGHM_input_run']:
-    #     wghm_input_vars
+
+    wghm_input_flag = output_selection['WGHM_input_run']
 
     global_annual_total_flag = output_selection['Global_Annual_Totals']
 
-    return (output_sector_sel, output_vars_sel, global_annual_total_flag)
-            # wghm_input_flag) 
+    return (output_sector_sel, output_vars_sel,
+            wghm_input_flag, global_annual_total_flag)
 
 
-def get_selected_var_results_as_xr(output_sector_sel,
+def get_selected_var_results_as_xr(results_dict,
+                                   output_sector_sel,
                                    output_vars_sel,
-                                   results_dict):
+                                   wghm_input_flag,
+                                   ):
     """
     Get selected variable results as xarray datasets.
 
     Parameters
     ----------
+    results_dict : dict
+        Dictionary containing the results in numpy from the simulation.
     output_sector_sel : list
         List of selected sectors.
     output_vars_sel : list
         List of selected variables.
-    results_dict : dict
-        Dictionary containing the results from the simulation.
+    wghm_input_flag : bool
+        Flag indicating whether dict with wghm input variables in xr.DataArray
+        format should be kept in memory.
 
     Returns
     -------
     output_xr_data : dict
         Dictionary of xarray datasets for selected variables.
     """
+    # first get xr data for netcdf output
     output_xr_data = {}
     for sector_name in output_sector_sel:
         sector_obj = results_dict[sector_name]
@@ -105,6 +113,28 @@ def get_selected_var_results_as_xr(output_sector_sel,
                                               sector_name)
                 var_name = sector_name + '_' + var_name
                 output_xr_data[var_name] = var_xr_result
+
+    # second get xr data for wghm input
+    if wghm_input_flag:
+        wghm_input_variables = [('irrigation', 'consumptive_use_sw'),
+                                ('irrigation', 'abstraction_sw'),
+                                ('total', 'net_abstraction_gw'),
+                                ('total', 'net_abstraction_sw')]
+
+        for wghm_var in wghm_input_variables:
+            sector_name = wghm_var[0]
+            var_name = wghm_var[1]
+            output_var_name = sector_name + '_' + var_name
+            # check if wghm input variables are not selected for output
+            # then write wghm input variables here to xr_data
+            if output_var_name not in output_xr_data:
+                sector_obj = results_dict[sector_name]
+                var_np_result = getattr(sector_obj, var_name, None)
+                output_xr_data[output_var_name] = \
+                    odp.write_to_xr_dataarray(var_np_result,
+                                              sector_obj.coords,
+                                              var_name,
+                                              sector_name)
 
     return output_xr_data
 
@@ -183,7 +213,7 @@ def save_global_annual_totals_to_excel(output_dir, var_dict):
         for variable_name, df in var_dict.items():
             df.to_excel(writer, sheet_name=variable_name)
 
-    print(f"\n Excel file '{filename}' has been created with multiple sheets.")
+    # print(f"\n Excel file '{filename}' has been created with multiple sheets.")
 
 # ===============================================================
 # OUTPUT DATA MANAGER MAIN FUNCTION
@@ -212,7 +242,7 @@ def output_data_manager(gwswuse_results,
         The end year of the simulation period.
     """
     # initialize output selection
-    output_sector_sel, output_vars_sel, global_annual_total_flag = \
+    output_sector_sel, output_vars_sel, wghm_input_flag, global_annual_total_flag = \
         initialize_output_selection(output_selection)
 
     # create global annual totals
@@ -222,14 +252,15 @@ def output_data_manager(gwswuse_results,
 
         save_global_annual_totals_to_excel(output_dir, df_global_annual_totals)
 
-   
-
-    output_xr_data = get_selected_var_results_as_xr(output_sector_sel,
+    output_xr_data = get_selected_var_results_as_xr(gwswuse_results,
+                                                    output_sector_sel,
                                                     output_vars_sel,
-                                                    gwswuse_results)
-    save_datasets_to_netcdf(output_dir, output_xr_data)
+                                                    wghm_input_flag)
 
-    
+    save_datasets_to_netcdf(output_dir, output_xr_data)
+    print(f"\nOutput data saved to output folder {output_dir}")
+    return output_xr_data
+
 
 if __name__ == "__main__":
     from controller import configuration_module as cm

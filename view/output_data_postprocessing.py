@@ -19,9 +19,8 @@ import xarray as xr
 from termcolor import colored
 from colorama import init
 
-from controller import configuration_module as cm
 from model import time_unit_conversion as tc
-from view import regwswuse_var_info as var_info
+from view import gwswuse_var_info as var_info
 from misc import watergap_version
 
 
@@ -31,7 +30,14 @@ init()
 # =============================================================================
 
 
-def write_to_xr_dataarray(result_np, coords, variable_name, sector):
+# def write_to_xr_dataarray(result_np,
+#                           coords,
+#                           variable_name,
+#                           sector,
+#                           start_year):
+
+
+def write_to_xr_dataarray(result_np, coords, var_name, sector):
     """
     Write the model results contained in a NumPy array to an xarray dataset.
 
@@ -46,7 +52,7 @@ def write_to_xr_dataarray(result_np, coords, variable_name, sector):
         A dictionary of coordinates (latitude, longitude, and for some
         variables also time) used for the xarray dataset. This dictionary sets
         the spatial and temporal dimensions for the data.
-    variable_name : str
+    var_name : str
         The name of the variable to be stored in the xarray dataset.
     sector : str
         The sector associated with the variable, used for metadata.
@@ -56,35 +62,25 @@ def write_to_xr_dataarray(result_np, coords, variable_name, sector):
     xr.DataArray
         An xarray dataset with the model results and appropriate metadata.
     """
-    monthly_sector = ['irrigation', 'total']
     special_vars = ['irrigation_efficiency_gw',
                     'irrigation_efficiency_sw',
                     'deficit_irrigation_location']
 
-    if variable_name in special_vars:
+    if var_name in special_vars:
         # select only 'lat' & 'lon' as coordinates
         coords = {key: coords[key] for key in ['lat', 'lon']}
         result_xr = xr.Dataset(coords=coords)
     else:
-        if sector in monthly_sector:
-            # convert to m3/month
-            result_np = tc.convert_daily_to_monthly(result_np)
-            result_np = result_np
-        else:
-            # convert to m3/year
-            result_np = result_np * 365.0
         result_xr = xr.Dataset(coords=coords)
         result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
 
-    variable_metadata = set_variable_metadata_xr(sector, variable_name)
+    variable_metadata = set_variable_metadata_xr(sector, var_name)
     xr_var_name = variable_metadata['standard_name']
     del variable_metadata['standard_name']
 
     result_xr[xr_var_name] = \
         xr.DataArray(result_np, coords=coords)
     result_xr[xr_var_name].attrs = variable_metadata
-
-    # result_xr = set_dimension_attributes(result_xr, sector)
 
     result_xr.attrs = set_global_metadata()
 
@@ -132,7 +128,7 @@ def set_variable_metadata_xr(sector, var):
         return var_info.modelvars[var][sector]
 
 
-def set_dimension_attributes(xr_array, sector):
+def set_dimension_attributes(xr_array, sector, start_year):
     """
     Set the attributes of the dimensions of an xarray DataArray.
 
@@ -152,7 +148,6 @@ def set_dimension_attributes(xr_array, sector):
         timestep = 'Months'
     else:
         timestep = 'Years'
-    start_year = cm.start_year
     # Create attribute dictionairy for dimensions
     dim_attributes = {
         'time': {
@@ -331,8 +326,10 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
         'return_flow_tot', 'return_flow_gw', 'return_flow_sw',
         'net_abstraction_gw', 'net_abstraction_sw'
     ]
+    # List sectors with monthly time resolution
+    monthly_sectors = ['irrigation', 'total']
 
-    print('\n' + colored(f'Global Totals for year {cm.start_year}', 'cyan'))
+    print('\n' + colored(f'Global Totals for year {start_year}', 'cyan'))
     # Iterate over each variable in the list
     for var_name in global_annual_totals_vars:
         # Create an empty dataframe to store annual totals for each sector
@@ -343,14 +340,10 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
             # Get the array of values for the current variable and sector
             var_array = getattr(sectors_dict[sector], var_name)
 
-            # Determine the time step and number of simulation years
-            time_step, sim_num_years = tc.get_time_step_in_array(
-                var_array, start_year, end_year
-            )
-
-            # Convert daily values to yearly values
-            var_array = \
-                tc.convert_daily_to_yearly(var_array, start_year, end_year)
+            if sector in monthly_sectors:
+                # Convert daily values to yearly values
+                var_array = \
+                    tc.convert_monthly_to_yearly(var_array)
 
             # Sum the values across the lat and lon dimensions for annual
             # totals
