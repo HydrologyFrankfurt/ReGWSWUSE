@@ -13,11 +13,12 @@
 
 import time
 import xarray as xr
+import numpy as np
+from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
-
-
+    
 class LivestockSimulator:
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
@@ -75,7 +76,6 @@ class LivestockSimulator:
         Coordinates from the original dataset.
         (input)
     """
-
     def __init__(self, liv_data):
         """
         Initialize the LivestockSimulator with data and run the simulation.
@@ -111,15 +111,28 @@ class LivestockSimulator:
         # Store the coordinates for later use
         self.coords = liv_data['consumptive_use_tot'].coords
 
+        if cm.cell_specific_output['Flag']:
+            print("Livestock specific values for "
+                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
+                  f"lon: {cm.cell_specific_output['coords']['lon']},"
+                  f"year: {cm.cell_specific_output['coords']['year']}")
+            self.time_idx, self.lat_idx, self.lon_idx = \
+                tc.get_np_coords_cell_output(liv_data['consumptive_use_tot'],
+                                             'livestock',
+                                             cm.cell_specific_output)
+
         # Run the irrigation simulation
         self.simulate_livestock()
 
-        print("Livestock simulation was performed. \n")
+        # print("Livestock simulation was performed. \n")
 
     def simulate_livestock(self):
-        """
-        Run the livestock simulation with provided data and model equations.
-        """
+        """Run livestock simulation with provided data and model equations."""
+        if cm.cell_specific_output['Flag']:
+            print('liv_cu_tot_m3_year:'
+                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_wu_tot_m3_year:'
+                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
         # Convert total consumptive use to m3/day
         self.consumptive_use_tot = \
             tc.convert_yearly_to_daily(self.consumptive_use_tot)
@@ -132,6 +145,7 @@ class LivestockSimulator:
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
                                    self.fraction_gw_use)
+
         # Calc abstraction from groundwater and surface water
         self.abstraction_gw, self.abstraction_sw = \
             me.calc_gwsw_water_use(self.abstraction_tot,
@@ -150,17 +164,45 @@ class LivestockSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
+        if cm.cell_specific_output['Flag']:
+            print('liv_cu_tot_m3_day:'
+                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_wu_tot_m3_day:'
+                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_f_gw_use:'
+                  f'{self.fraction_gw_use}')
+            print('liv_cu_gw_m3_day:'
+                  f'{self.consumptive_use_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_cu_sw_m3_day:'
+                  f'{self.consumptive_use_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_wu_gw_m3_day:'
+                  f'{self.abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_wu_sw_m3_day:'
+                  f'{self.abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_rf_tot_m3_day:'
+                  f'{self.return_flow_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_f_gw_return:'
+                  f'{self.fraction_return_gw}')
+            print('liv_rf_gw_m3_day:'
+                  f'{self.return_flow_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_rf_sw_m3_day:'
+                  f'{self.return_flow_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_na_gw_m3_day:'
+                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('liv_na_sw_m3_day:'
+                  f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
-    from controller import input_data_manager as idm
+    from controller.input_data_manager import input_data_manager
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode,
-                               cm.correct_irr_with_t_aai_mode
-                               )
+        input_data_manager(cm.input_data_path,
+                           cm.gwswuse_convention_path,
+                           cm.start_year,
+                           cm.end_year,
+                           cm.correct_irr_t_aai_mode,
+                           cm.time_extend_mode
+                           )
     liv = LivestockSimulator(preprocessed_gwswuse_data['livestock'])

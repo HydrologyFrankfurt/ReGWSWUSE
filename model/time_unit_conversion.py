@@ -14,6 +14,7 @@ GWSWUSE module with unit and data structure convert functions.
 import os
 from numba import njit
 import numpy as np
+import pandas as pd
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -60,32 +61,34 @@ def convert_yearly_to_monthly(annual_m3_year_data):
 
 def convert_monthly_to_yearly(monthly_m3_month_data):
     """
-    Convert yearly values from m³/yearly to monthly values in m³/month.
+    Convert monthly values in m³/month to yearly values in m³/year.
 
     Parameters
     ----------
     monthly_m3_month_data: numpy.ndarray
         Array containing data for each month with unit m3/month. The shape of
         the array should be (num_years * 12, size_lat_coords, size_lon_coords).
+
     Returns
     -------
-    monthly_m3_year_data: numpy.ndarray
-        Array containing converted data for each month with unit m3/year. The
-        shape of the array will be (num_years * 12, size_lat_coords,
+    yearly_m3_year_data: numpy.ndarray
+        Array containing converted data for each year with unit m3/year. The
+        shape of the array will be (num_years, size_lat_coords,
         size_lon_coords).
     """
+    # calculate number of years
+    num_years = monthly_m3_month_data.shape[0] // 12
+    lat_size = monthly_m3_month_data.shape[1]
+    lon_size = monthly_m3_month_data.shape[2]
 
-    days_per_month = \
-        np.array([31.0, 28.0, 31.0, 30.0,
-                  31.0, 30.0, 31.0, 31.0,
-                  30.0, 31.0, 30.0, 31.0], dtype=np.float64)
-    num_years = monthly_m3_month_data.shape[0]
-    days_per_month = np.tile(days_per_month, num_years)
-    days_per_month_reshaped = days_per_month[:, None, None]
-    monthly_part_of_year = days_per_month_reshaped/365.0
-    monthly_m3_year_data = monthly_m3_month_data / monthly_part_of_year
+    yearly_m3_year_data = np.full((num_years, lat_size, lon_size), np.nan)
+    for year in range(num_years):
+        start_idx = year * 12
+        end_idx = start_idx + 12
+        yearly_m3_year_data[year] = \
+            np.sum(monthly_m3_month_data[start_idx:end_idx], axis=0)
 
-    return monthly_m3_year_data
+    return yearly_m3_year_data
 
 
 def convert_monthly_to_daily(monthly_data):
@@ -324,3 +327,32 @@ def expand_array_size(annual_array):
                 annual_array[year, :, :]
 
     return monthly_array
+
+
+def get_np_coords_cell_output(xr_data, sector, cell_specific_output):
+    coords = cell_specific_output['coords']
+    lat = coords['lat']
+    lon = coords['lon']
+    year = coords['year']
+    month = coords['month']
+    if sector == 'irrigation':
+        date = pd.Timestamp(f'{year}-{month:02d}-01')
+    else:
+        date = pd.Timestamp(f'{year}-01-01')
+
+    # Wähle den nächsten Punkt anhand von lat, lon und time
+    selected_data = xr_data.sel(lat=lat, lon=lon, time=date, method='nearest')
+
+    # Finde die NumPy-Indizes für die Koordinaten time, lat and lon
+    time_idx = \
+        np.where(xr_data.coords['time'].values ==
+                 np.datetime64(selected_data.coords['time'].values))[0][0]
+    lat_idx = \
+        np.where(xr_data.coords['lat'].values ==
+                 selected_data.coords['lat'].values)[0][0]
+
+    lon_idx = \
+        np.where(xr_data.coords['lon'].values ==
+                 selected_data.coords['lon'].values)[0][0]
+
+    return (time_idx, lat_idx, lon_idx)

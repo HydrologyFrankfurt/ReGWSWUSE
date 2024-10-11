@@ -11,8 +11,8 @@
 
 """ GWSWUSE domestic simulation module."""
 
-import time
 import xarray as xr
+from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
@@ -105,15 +105,28 @@ class DomesticSimulator:
         # Store the coordinates for later use
         self.coords = dom_data['consumptive_use_tot'].coords
 
+        if cm.cell_specific_output['Flag']:
+            print("Domestic specific values for "
+                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
+                  f"lon: {cm.cell_specific_output['coords']['lon']},\n"
+                  f"year: {cm.cell_specific_output['coords']['year']}")
+            self.time_idx, self.lat_idx, self.lon_idx = \
+                tc.get_np_coords_cell_output(dom_data['consumptive_use_tot'],
+                                             'domestic',
+                                             cm.cell_specific_output)
+
         # Run the domestic simulation
         self.simulate_domestic()
 
-        print("Domestic simulation was performed. \n")
+        # print("Domestic simulation was performed. \n")
 
     def simulate_domestic(self):
-        """
-        Run the domestic simulation with provided data and model equations.
-        """
+        """Run domestic simulation with provided data and model equations."""
+        if cm.cell_specific_output['Flag']:
+            print('dom_cu_tot_m3_year:'
+                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_wu_tot_m3_year:'
+                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
         # Convert total consumptive use to m3/day
         self.consumptive_use_tot = \
             tc.convert_yearly_to_daily(self.consumptive_use_tot)
@@ -145,17 +158,46 @@ class DomesticSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
+        if cm.cell_specific_output['Flag']:
+            print('dom_cu_tot_m3_day:'
+                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_wu_tot_m3_day:'
+                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_f_gw_use:'
+                  f'{self.fraction_gw_use[self.lat_idx, self.lon_idx]}')
+            print('dom_cu_gw_m3_day:'
+                  f'{self.consumptive_use_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_cu_sw_m3_day:'
+                  f'{self.consumptive_use_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_wu_gw_m3_day:'
+                  f'{self.abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_wu_sw_m3_day:'
+                  f'{self.abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_rf_tot_m3_day:'
+                  f'{self.return_flow_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_f_gw_return:'
+                  f'{self.fraction_return_gw}')
+            print('dom_rf_gw_m3_day:'
+                  f'{self.return_flow_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_rf_sw_m3_day:'
+                  f'{self.return_flow_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_na_gw_m3_day:'
+                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
+            print('dom_na_sw_m3_day:'
+                  f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
+
 
 if __name__ == "__main__":
     from controller import configuration_module as cm
     from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode,
-                               cm.correct_irr_t_aai_mode
-                               )
+        input_data_manager(cm.input_data_path,
+                           cm.gwswuse_convention_path,
+                           cm.start_year,
+                           cm.end_year,
+                           cm.correct_irr_t_aai_mode,
+                           cm.time_extend_mode
+                           )
+
     dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])
