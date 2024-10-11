@@ -11,11 +11,19 @@
 
 """ GWSWUSE manufacturing simulation module."""
 
-import time
+import os
 import xarray as xr
 from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
+
+
+# ===============================================================
+# Get module name and remove the .py extension
+# Module name is passed to logger
+# # =============================================================
+modname = (os.path.basename(__file__))
+modname = modname.split('.')[0]
 
 
 class ManufacturingSimulator:
@@ -121,24 +129,12 @@ class ManufacturingSimulator:
         # Run the irrigation simulation
         self.simulate_manufacturing()
 
-        print("Manufacturing simulation was performed. \n")
+        # print("Manufacturing simulation was performed. \n")
 
     def simulate_manufacturing(self):
         """
         Run manufacturing simulation with provided data and model equations.
         """
-        if cm.cell_specific_output['Flag']:
-            print('man_cu_tot_m3_year:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_wu_tot_m3_year:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-        # Convert total consumptive use to m3/day
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(self.consumptive_use_tot)
-
-        # Convert total abstraction to m3/day
-        self.abstraction_tot = \
-            tc.convert_yearly_to_daily(self.abstraction_tot)
 
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
@@ -164,39 +160,70 @@ class ManufacturingSimulator:
                                          self.return_flow_sw)
 
         if cm.cell_specific_output['Flag']:
-            print('man_cu_tot_m3_day:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_wu_tot_m3_day:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_f_gw_use:'
-                  f'{self.fraction_gw_use[self.lat_idx, self.lon_idx]}')
-            print('man_cu_gw_m3_day:'
-                  f'{self.consumptive_use_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_cu_sw_m3_day:'
-                  f'{self.consumptive_use_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_wu_gw_m3_day:'
-                  f'{self.abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_wu_sw_m3_day:'
-                  f'{self.abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_rf_tot_m3_day:'
-                  f'{self.return_flow_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_f_gw_return:'
-                  f'{self.fraction_return_gw}')
-            print('man_rf_gw_m3_day:'
-                  f'{self.return_flow_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_rf_sw_m3_day:'
-                  f'{self.return_flow_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_na_gw_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_na_sw_m3_day:'
-                  f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('man_na_tot_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+            print('man_consumptive_use_tot [m3/year]: {}'.format(
+                self.consumptive_use_tot[self.time_idx,
+                                         self.lat_idx,
+                                         self.lon_idx]))
 
+            print('man_abstraction_tot [m3/year]: {}'.format(
+                self.abstraction_tot[self.time_idx,
+                                     self.lat_idx,
+                                     self.lon_idx]))
+
+            print('man_fraction_gw_use [-]: {}'.format(
+                self.fraction_gw_use[self.lat_idx,
+                                     self.lon_idx]))
+
+            print('man_consumptive_use_gw [m3/year]: {}'.format(
+                self.consumptive_use_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('man_consumptive_use_sw [m3/year]: {}'.format(
+                self.consumptive_use_sw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('man_abstraction_gw [m3/year]: {}'.format(
+                self.abstraction_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('man_abstraction_sw [m3/year]: {}'.format(
+                self.abstraction_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('man_return_flow_tot [m3/year]: {}'.format(
+                self.return_flow_tot[self.time_idx,
+                                     self.lat_idx,
+                                     self.lon_idx]))
+
+            print('man_fraction_return_gw [-]: {}'.format(
+                self.fraction_return_gw))
+
+            print('man_return_flow_gw [m3/year]: {}'.format(
+                self.return_flow_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('man_return_flow_sw [m3/year]: {}'.format(
+                self.return_flow_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('man_net_abstraction_gw [m3/year]: {}'.format(
+                self.net_abstraction_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('man_net_abstraction_sw [m3/year]: {} \n'.format(
+                    self.net_abstraction_sw[self.time_idx,
+                                            self.lat_idx,
+                                            self.lon_idx]))
 
 
 if __name__ == "__main__":
-    from controller import configuration_module as cm
     from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \

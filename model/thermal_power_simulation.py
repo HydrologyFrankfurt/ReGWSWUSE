@@ -12,14 +12,22 @@
 """ GWSWUSE thermal power simulation module."""
 # from source.controller import configuration_module as cm
 
-import time
+import os
 import xarray as xr
 from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
+# ===============================================================
+# Get module name and remove the .py extension
+# Module name is passed to logger
+# # =============================================================
+modname = (os.path.basename(__file__))
+modname = modname.split('.')[0]
+
 
 class ThermalPowerSimulator:
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle thermal power water use simulations in the GWSWUSE model.
 
@@ -123,25 +131,12 @@ class ThermalPowerSimulator:
         # Run the irrigation simulation
         self.simulate_thermal_power()
 
-        print("Thermal power simulation was performed. \n")
+        # print("Thermal power simulation was performed. \n")
 
     def simulate_thermal_power(self):
         """
         Run thermal power simulation with provided data and model equations.
         """
-        if cm.cell_specific_output['Flag']:
-            print('tp_cu_tot_m3_year:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_wu_tot_m3_year:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-        # Convert total consumptive use to m3/day
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(self.consumptive_use_tot)
-
-        # Convert total abstraction to m3/day
-        self.abstraction_tot = \
-            tc.convert_yearly_to_daily(self.abstraction_tot)
-
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
@@ -164,41 +159,71 @@ class ThermalPowerSimulator:
                                          self.return_flow_gw,
                                          self.abstraction_sw,
                                          self.return_flow_sw)
-
+            
         if cm.cell_specific_output['Flag']:
-            print('tp_cu_tot_m3_day:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_wu_tot_m3_day:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_f_gw_use:'
-                  f'{self.fraction_gw_use}')
-            print('tp_cu_gw_m3_day:'
-                  f'{self.consumptive_use_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_cu_sw_m3_day:'
-                  f'{self.consumptive_use_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_wu_gw_m3_day:'
-                  f'{self.abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_wu_sw_m3_day:'
-                  f'{self.abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_rf_tot_m3_day:'
-                  f'{self.return_flow_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_f_gw_return:'
-                  f'{self.fraction_return_gw}')
-            print('tp_rf_gw_m3_day:'
-                  f'{self.return_flow_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_rf_sw_m3_day:'
-                  f'{self.return_flow_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_na_gw_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_na_sw_m3_day:'
-                  f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('tp_na_tot_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+            print('tp_consumptive_use_tot [m3/year]: {}'.format(
+                self.consumptive_use_tot[self.time_idx,
+                                          self.lat_idx,
+                                          self.lon_idx]))
 
+            print('tp_abstraction_tot [m3/year]: {}'.format(
+                self.abstraction_tot[self.time_idx,
+                                      self.lat_idx,
+                                      self.lon_idx]))
+
+            print('tp_fraction_gw_use [-]: {}'.format(
+                self.fraction_gw_use))
+
+            print('tp_consumptive_use_gw [m3/year]: {}'.format(
+                self.consumptive_use_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('tp_consumptive_use_sw [m3/year]: {}'.format(
+                self.consumptive_use_sw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('tp_abstraction_gw [m3/year]: {}'.format(
+                self.abstraction_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('tp_abstraction_sw [m3/year]: {}'.format(
+                self.abstraction_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('tp_return_flow_tot [m3/year]: {}'.format(
+                self.return_flow_tot[self.time_idx,
+                                      self.lat_idx,
+                                      self.lon_idx]))
+
+            print('tp_fraction_return_gw [-]: {}'.format(
+                self.fraction_return_gw))
+
+            print('tp_return_flow_gw [m3/year]: {}'.format(
+                self.return_flow_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('tp_return_flow_sw [m3/year]: {}'.format(
+                self.return_flow_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('tp_net_abstraction_gw [m3/year]: {}'.format(
+                self.net_abstraction_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('tp_net_abstraction_sw [m3/year]: {} \n'.format(
+                    self.net_abstraction_sw[self.time_idx,
+                                            self.lat_idx,
+                                            self.lon_idx]))
 
 
 if __name__ == "__main__":
-    from controller import configuration_module as cm
     from controller import input_data_manager as idm
 
     preprocessed_gwswuse_data, _, _, _ = \
@@ -206,7 +231,7 @@ if __name__ == "__main__":
                                cm.gwswuse_convention_path,
                                cm.start_year,
                                cm.end_year,
-                               cm.time_extend_mode,
-                               cm.correct_irr_with_t_aai_mode
+                               cm.time_extend_mode
+                               # cm.correct_irr_with_t_aai_mode
                                )
     tp = ThermalPowerSimulator(preprocessed_gwswuse_data['thermal_power'])
