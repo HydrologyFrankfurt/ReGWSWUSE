@@ -30,13 +30,6 @@ init()
 # =============================================================================
 
 
-# def write_to_xr_dataarray(result_np,
-#                           coords,
-#                           variable_name,
-#                           sector,
-#                           start_year):
-
-
 def write_to_xr_dataarray(result_np, coords, var_name, sector):
     """
     Write the model results contained in a NumPy array to an xarray dataset.
@@ -71,6 +64,13 @@ def write_to_xr_dataarray(result_np, coords, var_name, sector):
         coords = {key: coords[key] for key in ['lat', 'lon']}
         result_xr = xr.Dataset(coords=coords)
     else:
+        if sector in monthly_sector:
+            # convert to m3/month
+            result_np = tc.convert_daily_to_monthly(result_np)
+            result_np = result_np
+        else:
+            # convert to m3/year
+            result_np = result_np * 365.0
         result_xr = xr.Dataset(coords=coords)
         result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
 
@@ -326,8 +326,6 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
         'return_flow_tot', 'return_flow_gw', 'return_flow_sw',
         'net_abstraction_gw', 'net_abstraction_sw'
     ]
-    # List sectors with monthly time resolution
-    monthly_sectors = ['irrigation', 'total']
 
     print('\n' + colored(f'Global Totals for year {start_year}', 'cyan'))
     # Iterate over each variable in the list
@@ -340,10 +338,14 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
             # Get the array of values for the current variable and sector
             var_array = getattr(sectors_dict[sector], var_name)
 
-            if sector in monthly_sectors:
-                # Convert daily values to yearly values
-                var_array = \
-                    tc.convert_monthly_to_yearly(var_array)
+            # Determine the time step and number of simulation years
+            time_step, sim_num_years = tc.get_time_step_in_array(
+                var_array, start_year, end_year
+            )
+
+            # Convert daily values to yearly values
+            var_array = \
+                tc.convert_daily_to_yearly(var_array, start_year, end_year)
 
             # Sum the values across the lat and lon dimensions for annual
             # totals
