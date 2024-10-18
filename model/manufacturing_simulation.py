@@ -13,20 +13,20 @@
 
 import os
 import xarray as xr
-from controller import configuration_module as cm
 from model import model_equations as me
-from model import time_unit_conversion as tc
+from misc import cell_specific_output as cso
 
 
 # ===============================================================
 # Get module name and remove the .py extension
 # Module name is passed to logger
 # # =============================================================
-modname = (os.path.basename(__file__))
+modname = os.path.basename(__file__)
 modname = modname.split('.')[0]
 
 
 class ManufacturingSimulator:
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle manufacturing water use simulations in the GWSWUSE model.
 
@@ -85,7 +85,7 @@ class ManufacturingSimulator:
         (input)
     """
 
-    def __init__(self, man_data):
+    def __init__(self, man_data, config):
         """
         Initialize the ManufacturingSimulator with data and run the simulation.
 
@@ -95,6 +95,10 @@ class ManufacturingSimulator:
             Dictionary containing xarray.DataArrays for various manufacturing
             variables.
         """
+        # Initialize relevant configuration settings
+        self.cso_flag = config.cell_specific_output['Flag']
+        # Set unit
+        self.unit = man_data['unit']
         # Set total consumptive use input [m3/year]
         self.consumptive_use_tot = man_data['consumptive_use_tot'].values
 
@@ -116,15 +120,16 @@ class ManufacturingSimulator:
         # Store the coordinates for later use
         self.coords = man_data['consumptive_use_tot'].coords
 
-        if cm.cell_specific_output['Flag']:
-            print("Manufacturing specific values for "
-                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
-                  f"lon: {cm.cell_specific_output['coords']['lon']},"
-                  f"year: {cm.cell_specific_output['coords']['year']}")
-            self.time_idx, self.lat_idx, self.lon_idx = \
-                tc.get_np_coords_cell_output(man_data['consumptive_use_tot'],
+        if self.cso_flag:
+            print("Manufacturing-specific values for "
+                  f"lat: {config.cell_specific_output['coords']['lat']}, "
+                  f"lon: {config.cell_specific_output['coords']['lon']},\n"
+                  f"year: {config.cell_specific_output['coords']['year']}, "
+                  f"month: {config.cell_specific_output['coords']['month']}")
+            self.coords_idx = \
+                cso.get_np_coords_cell_output(man_data['consumptive_use_tot'],
                                              'manufacturing',
-                                             cm.cell_specific_output)
+                                             config.cell_specific_output)
 
         # Run the irrigation simulation
         self.simulate_manufacturing()
@@ -132,10 +137,7 @@ class ManufacturingSimulator:
         # print("Manufacturing simulation was performed. \n")
 
     def simulate_manufacturing(self):
-        """
-        Run manufacturing simulation with provided data and model equations.
-        """
-
+        """Run manufacturing simulation with provided data."""
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
@@ -159,78 +161,45 @@ class ManufacturingSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        if cm.cell_specific_output['Flag']:
-            print('man_consumptive_use_tot [m3/year]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
-
-            print('man_abstraction_tot [m3/year]: {}'.format(
-                self.abstraction_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('man_fraction_gw_use [-]: {}'.format(
-                self.fraction_gw_use[self.lat_idx,
-                                     self.lon_idx]))
-
-            print('man_consumptive_use_gw [m3/year]: {}'.format(
-                self.consumptive_use_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('man_consumptive_use_sw [m3/year]: {}'.format(
-                self.consumptive_use_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('man_abstraction_gw [m3/year]: {}'.format(
-                self.abstraction_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('man_abstraction_sw [m3/year]: {}'.format(
-                self.abstraction_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('man_return_flow_tot [m3/year]: {}'.format(
-                self.return_flow_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('man_fraction_return_gw [-]: {}'.format(
-                self.fraction_return_gw))
-
-            print('man_return_flow_gw [m3/year]: {}'.format(
-                self.return_flow_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('man_return_flow_sw [m3/year]: {}'.format(
-                self.return_flow_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('man_net_abstraction_gw [m3/year]: {}'.format(
-                self.net_abstraction_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('man_net_abstraction_sw [m3/year]: {} \n'.format(
-                    self.net_abstraction_sw[self.time_idx,
-                                            self.lat_idx,
-                                            self.lon_idx]))
+        cso.print_cell_value(self.consumptive_use_tot, 'consumptive_use_tot',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.abstraction_tot, 'abstraction_tot',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.fraction_gw_use, 'fraction_gw_use',
+                  self.coords_idx, flag=self.cso_flag)
+        cso.print_cell_value(self.consumptive_use_gw, 'consumptive_use_gw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.consumptive_use_sw, 'consumptive_use_sw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.abstraction_gw, 'abstraction_gw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.abstraction_sw, 'abstraction_sw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.return_flow_tot, 'return_flow_tot',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.fraction_return_gw, 'fraction_return_gw',
+                  self.coords_idx, flag=self.cso_flag)
+        cso.print_cell_value(self.return_flow_gw, 'return_flow_gw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.return_flow_sw, 'return_flow_sw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.net_abstraction_gw, 'net_abstraction_gw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        cso.print_cell_value(self.net_abstraction_sw, 'net_abstraction_sw',
+                  self.coords_idx, self.unit, self.cso_flag)
+        print()
 
 
 if __name__ == "__main__":
+    from misc import cli_args
+    from controller import config_module as cm
     from controller import input_data_manager as idm
 
+    args = cli_args.parse_cli()
+    FILENAME = "C:/Users/lniss/Desktop/ReGWSWUSE_LN/source//gwswuse_config.json"
+
+    config_test = cm.ConfigHandler(FILENAME)
+
     preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode
-                               )
-    man = ManufacturingSimulator(preprocessed_gwswuse_data['manufacturing'])
+        idm.input_data_manager(config_test)
+    man = ManufacturingSimulator(preprocessed_gwswuse_data['manufacturing'], config_test)
