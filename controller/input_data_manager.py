@@ -120,12 +120,7 @@ def check_results_handling(check_results):
 # =============================================================================
 
 
-def input_data_manager(input_data_path,
-                       convention_path,
-                       start_year,
-                       end_year,
-                       correct_irr_t_aai_mode,
-                       time_extend_mode):
+def input_data_manager(config):
     """
     Manage the loading, checking and pre-processing of input data.
 
@@ -165,6 +160,14 @@ def input_data_manager(input_data_path,
     4. Returns the preprocessed data, check results, loaded datasets and
        conventions.
     """
+    # initialize needed config
+    input_data_path = config.input_data_path
+    convention_path = config.convention_path
+    start_year = config.start_year
+    end_year = config.end_year
+    correct_irrigation_t_aai_mode = config.correct_irrigation_t_aai_mode
+    time_extend_mode = config.time_extend_mode
+
     # load conventions
     conventions = load_conventions(convention_path)
     sector_requirements = conventions['sector_requirements']
@@ -179,7 +182,7 @@ def input_data_manager(input_data_path,
                                         conventions,
                                         start_year,
                                         end_year,
-                                        correct_irr_t_aai_mode,
+                                        correct_irrigation_t_aai_mode,
                                         time_extend_mode)
 
     check_results_handling(check_results)
@@ -190,17 +193,14 @@ def input_data_manager(input_data_path,
 
 
 if __name__ == "__main__":
-    from controller import configuration_module as cm
+    from controller import config_module as cm
+    CONFIG_TEST = \
+        'C:\\Users\\lniss\\Desktop\\GitTest\\main\\gwswuse_config.json'
+    config = cm.ConfigHandler(CONFIG_TEST)
 
     (preprocessed_gwswuse_data,
      gwswuse_check_results,
      input_datasets,
      gwswuse_conventions
      ) = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.correct_irr_t_aai_mode,
-                           cm.time_extend_mode
-                           )
+        input_data_manager(config)

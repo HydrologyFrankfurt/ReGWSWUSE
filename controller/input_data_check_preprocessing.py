@@ -638,6 +638,7 @@ def check_and_preprocess_input_data(datasets,
         # =====================================================================
         if sector not in preprocessed_datasets:
             preprocessed_datasets[sector] = {}
+            preprocessed_datasets[sector]['unit']=expected_units[0]
         preprocessed_datasets[sector][variable] = \
             next(iter(dataset.data_vars.values()))  # from xr.ds to xr.array
     check_results = \
