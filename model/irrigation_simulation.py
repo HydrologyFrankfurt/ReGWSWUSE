@@ -12,7 +12,6 @@
 
 import os
 import xarray as xr
-from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
@@ -104,7 +103,7 @@ class IrrigationSimulator:
         (input)
     """
 
-    def __init__(self, irr_data):
+    def __init__(self, irr_data, config):
         """
         Initialize the IrrigationSimulator with data and run the simulation.
 
@@ -114,6 +113,18 @@ class IrrigationSimulator:
             Dictionary containing xarray.DataArrays for various irrigation
             variables.
         """
+        # Initialize configuration settings
+        self.cso_flag = config.cell_specific_output['flag']
+
+        self.irrigation_input_based_on_aei = \
+            config.irrigation_input_based_on_aei
+        self.correct_irrigation_t_aai_mode = \
+            config.correct_irrigation_t_aai_mode
+        self.deficit_irrigation_factor = config.deficit_irrigation_factor
+        self.deficit_irrigation_mode = config.deficit_irrigation_mode
+        self.efficiency_gw_mode = config.irrigation_efficiency_gw_mode
+        self.efficiency_gw_threshold = config.efficiency_gw_threshold
+
         # Set total consumptive use input [m3/month]
         self.consumptive_use_tot = irr_data['consumptive_use_tot'].values
 
@@ -141,7 +152,7 @@ class IrrigationSimulator:
         self.deficit_irrigation_location = \
             me.set_irr_deficit_locations(self.gwd_mask,
                                          self.abstraction_irr_part_mask,
-                                         cm.deficit_irrigation_factor)
+                                         self.deficit_irrigation_factor)
 
         # Set fraction_aai_aei
         self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
@@ -155,22 +166,22 @@ class IrrigationSimulator:
         # Determine groundwater efficiency based on surface water efficiency
         self.irrigation_efficiency_gw = \
             me.set_irr_efficiency_gw(self.irrigation_efficiency_sw,
-                                     cm.efficiency_gw_threshold,
-                                     cm.efficiency_gw_mode)
+                                     self.efficiency_gw_threshold,
+                                     self.efficiency_gw_mode)
 
         # Store the coordinates for transfer back to xr.DataArray
         self.coords = irr_data['consumptive_use_tot'].coords
 
-        if cm.cell_specific_output['Flag']:
+        if self.cso_flag:
             print("'Irrigation-specific values for "
-                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
-                  f"lon: {cm.cell_specific_output['coords']['lon']},\n"
-                  f"year: {cm.cell_specific_output['coords']['year']}, "
-                  f"month: {cm.cell_specific_output['coords']['month']}")
+                  f"lat: {config.cell_specific_output['coords']['lat']}, "
+                  f"lon: {config.cell_specific_output['coords']['lon']},\n"
+                  f"year: {config.cell_specific_output['coords']['year']}, "
+                  f"month: {config.cell_specific_output['coords']['month']}")
             self.time_idx, self.lat_idx, self.lon_idx = \
                 tc.get_np_coords_cell_output(irr_data['consumptive_use_tot'],
                                              'irrigation',
-                                             cm.cell_specific_output)
+                                             config.cell_specific_output)
         # Run the irrigation simulation
         self.simulate_irrigation()
 
@@ -178,7 +189,7 @@ class IrrigationSimulator:
 
     def simulate_irrigation(self):
         """Run irrigation simulation with provided data and model equations."""
-        if cm.cell_specific_output['Flag']:
+        if self.cso_flag:
             print('irr_consumptive_use_tot [m3/month]: {}'.format(
                 self.consumptive_use_tot[self.time_idx,
                                          self.lat_idx,
@@ -189,10 +200,10 @@ class IrrigationSimulator:
             me.calc_irr_consumptive_use_aai(
                 self.consumptive_use_tot,
                 self.fraction_aai_aei,
-                cm.irrigation_input_based_on_aei
+                self.irrigation_input_based_on_aei
                 )
 
-        if cm.cell_specific_output['Flag'] and cm.irrigation_input_based_on_aei:
+        if self.cso_flag and self.irrigation_input_based_on_aei:
             print('fraction_aai_aei [-]: {}'.format(
                 self.fraction_aai_aei[self.time_idx,
                                       self.lat_idx,
@@ -209,10 +220,10 @@ class IrrigationSimulator:
             me.calc_irr_deficit_consumptive_use_tot(
                 self.consumptive_use_tot,
                 self.deficit_irrigation_location,
-                cm.deficit_irrigation_mode
+                self.deficit_irrigation_mode
                 )
 
-        if cm.cell_specific_output['Flag'] and cm.deficit_irrigation_mode:
+        if self.cso_flag and self.deficit_irrigation_mode:
             print('gwd_mask [bool]: {}'.format(
                 self.gwd_mask[self.lat_idx,
                               self.lon_idx]))
@@ -235,10 +246,10 @@ class IrrigationSimulator:
             me.correct_irr_consumptive_use_by_t_aai(
                 self.consumptive_use_tot,
                 self.time_factor_aai,
-                cm.correct_irr_t_aai_mode
+                self.correct_irrigation_t_aai_mode
                 )
 
-        if cm.cell_specific_output['Flag'] and cm.correct_irr_t_aai_mode:
+        if self.cso_flag and self.correct_irrigation_t_aai_mode:
             print('time_factor_aai [-]: {}'.format(
                 self.time_factor_aai[self.time_idx,
                                      self.lat_idx,
@@ -277,7 +288,7 @@ class IrrigationSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        if cm.cell_specific_output['Flag']:
+        if self.cso_flag:
             print('irr_fraction_gw_use [-]: {}'.format(
                 self.fraction_gw_use[self.lat_idx,
                                      self.lon_idx]))
@@ -340,16 +351,4 @@ class IrrigationSimulator:
                 self.net_abstraction_sw[self.time_idx,
                                         self.lat_idx,
                                         self.lon_idx]))
-
-
-if __name__ == "__main__":
-    from controller import input_data_manager as idm
-
-    preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode
-                               )
-    irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'])
+            print()

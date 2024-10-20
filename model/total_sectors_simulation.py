@@ -12,8 +12,6 @@
 """ GWSWUSE total sectors simulation module."""
 
 import os
-
-from controller import configuration_module as cm
 from model import model_equations as me
 
 # ===============================================================
@@ -77,7 +75,7 @@ class TotalSectorsSimulator():
         (input)
     """
 
-    def __init__(self, irr, dom, man, tp, liv):
+    def __init__(self, irr, dom, man, tp, liv, config):
         """
         Initialize the TotalSectorsSimulator with data from all sectors.
 
@@ -94,6 +92,9 @@ class TotalSectorsSimulator():
         liv : SectorData
             Livestock sector data.
         """
+        # Initialize relevant configuration settings
+        self.cso_flag = config.cell_specific_output['flag']
+
         # Sum total consumptive use across all sectors
         self.consumptive_use_tot = \
             me.calculate_cross_sector_totals(irr.consumptive_use_tot,
@@ -180,13 +181,14 @@ class TotalSectorsSimulator():
                                    self.return_flow_tot)
         # Store coords for generating netcdf-output
         self.coords = irr.coords
-        if cm.cell_specific_output['Flag']:
+
+        if self.cso_flag:
             print("Total specific values for lat: {lat}, lon: {lon}, "
                   "year: {year}, month: {month}".format(
-                      lat=cm.cell_specific_output['coords']['lat'],
-                      lon=cm.cell_specific_output['coords']['lon'],
-                      year=cm.cell_specific_output['coords']['year'],
-                      month=cm.cell_specific_output['coords']['month']
+                      lat=config.cell_specific_output['coords']['lat'],
+                      lon=config.cell_specific_output['coords']['lon'],
+                      year=config.cell_specific_output['coords']['year'],
+                      month=config.cell_specific_output['coords']['month']
                   ))
             self.time_idx = irr.time_idx
             self.lat_idx = irr.lat_idx
@@ -252,7 +254,8 @@ class TotalSectorsSimulator():
                                      self.lat_idx,
                                      self.lon_idx]))
 
-            print('total_fraction_return_gw [-]: {} \n'.format(
+            print('total_fraction_return_gw [-]: {}'.format(
                 self.fraction_return_gw[self.time_idx,
                                         self.lat_idx,
                                         self.lon_idx]))
+            print()

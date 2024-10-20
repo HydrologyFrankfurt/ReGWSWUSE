@@ -12,7 +12,6 @@
 
 import os
 import xarray as xr
-from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
@@ -82,7 +81,7 @@ class DomesticSimulator:
         (input)
     """
 
-    def __init__(self, dom_data):
+    def __init__(self, dom_data, config):
         """
         Initialize the DomesticSimulator with data and run the simulation.
 
@@ -92,6 +91,9 @@ class DomesticSimulator:
             Dictionary containing xarray.DataArrays for various domestic
             variables.
         """
+        # Initialize relevant configuration settings
+        self.cso_flag = config.cell_specific_output['flag']
+
         # Set total consumptive use input [m3/year]
         self.consumptive_use_tot = dom_data['consumptive_use_tot'].values
 
@@ -113,15 +115,15 @@ class DomesticSimulator:
         # Store the coordinates for later use
         self.coords = dom_data['consumptive_use_tot'].coords
 
-        if cm.cell_specific_output['Flag']:
+        if self.cso_flag:
             print("Domestic specific values for "
-                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
-                  f"lon: {cm.cell_specific_output['coords']['lon']},\n"
-                  f"year: {cm.cell_specific_output['coords']['year']}")
+                  f"lat: {config.cell_specific_output['coords']['lat']}, "
+                  f"lon: {config.cell_specific_output['coords']['lon']},\n"
+                  f"year: {config.cell_specific_output['coords']['year']}")
             self.time_idx, self.lat_idx, self.lon_idx = \
                 tc.get_np_coords_cell_output(dom_data['consumptive_use_tot'],
                                              'domestic',
-                                             cm.cell_specific_output)
+                                             config.cell_specific_output)
 
         # Run the domestic simulation
         self.simulate_domestic()
@@ -154,7 +156,7 @@ class DomesticSimulator:
                                          self.return_flow_sw)
 
         # pylint: disable=consider-using-f-string
-        if cm.cell_specific_output['Flag']:
+        if self.cso_flag:
             print('dom_consumptive_use_tot [m3/year]: {}'.format(
                 self.consumptive_use_tot[self.time_idx,
                                           self.lat_idx,
@@ -212,20 +214,8 @@ class DomesticSimulator:
                                         self.lat_idx,
                                         self.lon_idx]))
 
-            print('dom_net_abstraction_sw [m3/year]: {} \n'.format(
+            print('dom_net_abstraction_sw [m3/year]: {}'.format(
                     self.net_abstraction_sw[self.time_idx,
                                             self.lat_idx,
                                             self.lon_idx]))
-
-
-# if __name__ == "__main__":
-#     from controller import input_data_manager as idm
-
-#     preprocessed_gwswuse_data, _, _, _ = \
-#         idm.input_data_manager(cm.input_data_path,
-#                                cm.gwswuse_convention_path,
-#                                cm.start_year,
-#                                cm.end_year,
-#                                cm.time_extend_mode
-#                                )
-#     dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])
+            print()
