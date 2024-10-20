@@ -8,9 +8,7 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-"""
-GWSWUSE input data check & preprocessing module for input_data_manager.
-"""
+"""GWSWUSE input data check & preprocessing module for input_data_manager."""
 import os
 import dask
 import xarray as xr
@@ -27,51 +25,67 @@ modname = modname.split('.')[0]
 
 
 # =============================================================================
-# CHECK FUNCTIONS
+# VALIDATION FUNCTIONS
 # =============================================================================
 
-
-def check_variable_metadata(dataset,
-                            reference_names, expected_units, unit_vars):
+def check_dataset_structure_metadata(
+        dataset, variable, reference_names, unit_vars, expected_units, log_id,
+        logs
+        ):
     """
-    Check if a dataset's variables have expected names and units.
+    Validate and log metadata related to the structure of the dataset.
+
+    This function checks whether the dataset contains only one variable,
+    verifies the variable's name against the reference names, and checks if the
+    variable has the correct units. It logs any discrepancies (e.g., multiple
+    variables, unknown variable names, missing or incorrect units).
 
     Parameters
     ----------
     dataset : xarray.Dataset
-        The dataset to be checked.
-    reference_names : list
-        List of expected variable names.
+        The dataset containing variables to validate.
+    variable : str
+        The specific variable being validated.
+    reference_names : list of str
+        The expected variable names for validation.
+    unit_vars : list of str
+        A list of variables that should have units.
     expected_units : str
-        The expected units for the variables.
-    unit_vars : list
-        List of variables that should have units.
+        The expected units for the variable.
+    log_id : str
+        A unique identifier for logging the dataset's validation results.
+    logs : dict
+        A dictionary used for tracking validation results, including issues
+        with the variable name or units.
 
     Returns
     -------
-    unknown_name : bool
-        True if any variable has an unknown name.
-    incorrect_unit : bool
-        True if any variable has incorrect or missing units.
+    dict
+        The updated logs reflecting any detected issues during validation.
     """
-    unknown_name_flag = False
-    incorrect_unit_flag = False
+    # Check if only one variable exists in the dataset
+    if len(dataset.data_vars) != 1:
+        logs.setdefault("multiple_variables", []).append(log_id)
 
-    for var_name, data_var in dataset.data_vars.items():
-        if var_name not in reference_names:
-            unknown_name_flag = True
+    # Check the first variable in the dataset
+    first_var_name, first_data_var = next(iter(dataset.data_vars.items()))
 
-        if var_name in unit_vars:
-            if 'units' in data_var.attrs:
-                if expected_units and data_var.attrs['units'] != expected_units:
-                    incorrect_unit_flag = True
-            else:
-                incorrect_unit_flag = True
+    # Log if the variable name is not in the reference list
+    if first_var_name not in reference_names:
+        logs.setdefault("unknown_names", []).append(log_id)
 
-    return unknown_name_flag, incorrect_unit_flag
+    # Log if the variable has incorrect or missing units (if applicable)
+    if variable in unit_vars:
+        if 'units' in first_data_var.attrs:
+            if expected_units and first_data_var.attrs['units'] != expected_units:
+                logs.setdefault("incorrect_units", []).append(log_id)
+        else:
+            logs.setdefault("missing_unit", []).append(log_id)
+
+    return logs
 
 
-def check_lat_lon_coords(dataset, lat_lon_reference):
+def check_spatial_coords(dataset, logs):
     """
     Check if the dataset's lat/lon coordinates match the reference.
 
@@ -86,53 +100,57 @@ def check_lat_lon_coords(dataset, lat_lon_reference):
     -------
     lat_lon_reference : tuple of numpy.ndarray
         Updated reference lat/lon coordinates.
-    lat_lon_check_flag : bool
-        True if latitude coordinates match the reference.
+    logs : dict
+        The updated logs reflecting any detected issues during validation.
     """
-    lat_lon_check_flag = True
-
     if 'lat' in dataset.coords and 'lon' in dataset.coords:
         lat = dataset.coords['lat'].values
         lon = dataset.coords['lon'].values
 
-        if lat_lon_reference is None:
-            lat_lon_reference = (lat, lon)
+        if logs["lat_lon_reference"] is None:
+            logs["lat_lon_reference"] = (lat, lon)
         else:
-            if not np.array_equal(lat, lat_lon_reference[0]):
-                lat_lon_check_flag = False
-            if not np.array_equal(lon, lat_lon_reference[1]):
-                lat_lon_check_flag = False
+            if not np.array_equal(lat, logs["lat_lon_reference"][0]):
+                logs["lat_lon_check_flag"] = False
+            if not np.array_equal(lon, logs["lat_lon_reference"][1]):
+                logs["lat_lon_check_flag"] = False
     else:
-        lat_lon_check_flag = False
+        logs["lat_lon_check_flag"] = False
 
-    return lat_lon_reference, lat_lon_check_flag
+    return logs
 
 
-def check_time_coords(dataset, time_freq, start_year, end_year):
+def check_time_coords(dataset, time_freq, start_year, end_year, log_id, logs):
     """
-    Check if a dataset covers the period and has correct time resolution.
+    Validate the time coordinates of a dataset and log issues.
+
+    This function checks the presence of 'time' coordinates in the dataset,
+    validates that the dataset's time coverage and resolution match the
+    expected frequency and the required simulation period. If issues are found,
+    they are logged.
 
     Parameters
     ----------
     dataset : xarray.Dataset
-        The dataset to be checked.
-    time_unit : str
-        The time unit of the dataset ('monthly' or 'annual').
+        The dataset containing the time coordinates to validate.
+    time_freq : str
+        The expected time frequency, either 'monthly' or 'annual'.
     start_year : int
-        The start year of the period to be checked.
+        The start year of the required time period.
     end_year : int
-        The end year of the period to be checked.
+        The end year of the required time period.
+    log_id : str
+        A unique identifier for logging the dataset's validation results.
+    logs : dict
+        A dictionary used for tracking validation results, including issues
+        with time coordinates, resolution, or coverage.
 
     Returns
     -------
-    not_covering_period_flag : bool
-        True if the dataset does not cover the specified period.
-    incorrect_resolution_flag : bool
-        True if the dataset has incorrect time resolution.
+    logs : dict
+        The updated logs reflecting any detected issues during time coordinate
+        validation.
     """
-    not_covering_period_flag = False
-    incorrect_resolution_flag = False
-
     if 'time' in dataset.coords:
         time_values = pd.to_datetime(dataset.coords['time'].values)
         time_years = time_values.year
@@ -149,77 +167,25 @@ def check_time_coords(dataset, time_freq, start_year, end_year):
             )
 
         if not set(expected_times).issubset(set(time_values)):
-            incorrect_resolution_flag = True
+            logs.setdefault("incorrect_time_resolution", []).append(log_id)
 
         if min(time_years) > start_year or max(time_years) < end_year:
-            not_covering_period_flag = True
+            logs.setdefault("not_covering_period", []).append(log_id)
     else:
-        not_covering_period_flag = True
+        logs.setdefault("missing_time_coords", []).append(log_id)
 
-    return not_covering_period_flag, incorrect_resolution_flag
-
-
-def check_t_aai_mode_compatibility(correct_irr_t_aai_mode,
-                                   end_year,
-                                   time_extend_mode,
-                                   irr_consumptive_use_tot):
-    """
-    Check the compatibility of t_aai_mode with end_year and irr_cu_tot.
-
-    This function checks whether the correction mode `correct_with_t_aai_mode`
-    can be used based on the `end_year` and the availability of required input
-    data. The correction mode is only compatible if the `end_year` is 2016 or
-    later and the time period of the input data for `irr_consumptive_use_tot`
-    extends to at least 2016, given that `time_extend_mode` is False.
-
-    Parameters
-    ----------
-        Flag indicating if the correction with t_aai_mode is enabled.
-    end_year : int
-        The end year for the data processing.
-    time_extend_mode : bool
-        Flag indicating if the data is extended to include years before the
-        start year and after the end year.
-    irr_consumptive_use_tot : xarray.DataArray or xarray.Dataset
-        Irrigation-specific consumptive use from total water resources.
-
-    Returns
-    -------
-        The potentially updated flag indicating if the correction with
-        t_aai_mode is enabled.
-    t_aai_correction_mode_compatibility_flag : bool
-        Flag indicating if the `correct_with_t_aai_mode` is compatible with the
-        given `end_year` and input data.
-    """
-    t_aai_correction_mode_compatibility_flag = True
-
-    if correct_irr_t_aai_mode:
-        if end_year < 2016:
-            correct_irr_t_aai_mode = False
-            t_aai_correction_mode_compatibility_flag = False
-            print('The configuration correct_with_t_aai_mode can´t be used for'
-                  ' a simulation period that ends before 2016.')
-        elif (irr_consumptive_use_tot.time[-1].values <
-              np.datetime64('2016-01-01') and not time_extend_mode):
-            correct_irr_t_aai_mode = False
-            t_aai_correction_mode_compatibility_flag = False
-            print('Available time period of input data for '
-                  'irr.consumptive_use_tot is not compatible with '
-                  'correct_with_t_aai_mode')
-
-    return (correct_irr_t_aai_mode,
-            t_aai_correction_mode_compatibility_flag)
+    return logs
 
 
 # =============================================================
-# PREPROCESSING FUNCTION
+# PREPROCESSING FUCNTIONS
 # =============================================================
 def ensure_correct_dimension_order(xr_data):
     """
     Ensure the dimensions of an xarray object are in the correct order.
 
-    The function automatically checks if the 'time' dimension is present
-    and rearranges the dimensions accordingly.
+    The function automatically checks if the 'time' dimension is present and
+    rearranges the dimensions accordingly.
 
     Parameters
     ----------
@@ -270,10 +236,12 @@ def sort_lat_desc_lon_asc_coords(xr_data):
         raise ValueError("'lat' oder 'lon' Koordinaten fehlen im Dataset.")
 
     with dask.config.set(**{'array.slicing.split_large_chunks': True}):
-        sorted_lat_desc = xr_data.sortby('lat', ascending=False)
-        sorted_lat_desc_lon_asc = sorted_lat_desc.sortby('lon', ascending=True)
+        sorted_lat_desc_xr_data = xr_data.sortby('lat', ascending=False)
 
-    return sorted_lat_desc_lon_asc
+        sorted_lat_desc_lon_asc_xr_data = \
+            sorted_lat_desc_xr_data.sortby('lon', ascending=True)
+
+    return sorted_lat_desc_lon_asc_xr_data
 
 
 def trim_xr_data(xr_data, start_year, end_year):
@@ -327,13 +295,15 @@ def extend_xr_data(xr_data, start_year, end_year, time_freq):
 
     number_time_slices = 12 if freq == 'MS' else 1
 
-    append_data_to_start(
+    xr_extended_data = append_data_to_start(
         xr_data, xr_extended_data, simulation_time, number_time_slices
-    )
-    append_data_to_end(
+        )
+    xr_extended_data = append_data_to_end(
         xr_data, xr_extended_data, simulation_time, number_time_slices
-    )
-    insert_original_data(xr_data, xr_extended_data, xr_data_time)
+        )
+    xr_extended_data = insert_original_data(xr_data,
+                                            xr_extended_data,
+                                            xr_data_time)
 
     return xr_extended_data
 
@@ -362,8 +332,7 @@ def initialize_extended_data(xr_data, simulation_time):
         )
     elif isinstance(xr_data, xr.Dataset):
         xr_extended_data = xr.Dataset(
-            {var: (data.dims, np.empty((len(simulation_time), *data.shape[1:]))
-                   )
+            {var: (data.dims, np.empty((len(simulation_time), *data.shape[1:])))
              for var, data in xr_data.data_vars.items()},
             coords={coord: ([coord], simulation_time) if coord == 'time' else
                     (coord, data.values)
@@ -372,8 +341,9 @@ def initialize_extended_data(xr_data, simulation_time):
     return xr_extended_data
 
 
-def append_data_to_start(xr_data, xr_extended_data, simulation_time,
-                         number_time_slices):
+def append_data_to_start(
+        xr_data, xr_extended_data, simulation_time, number_time_slices
+        ):
     """
     Append data to the start of the extended DataArray or Dataset.
 
@@ -400,10 +370,12 @@ def append_data_to_start(xr_data, xr_extended_data, simulation_time,
                 xr_extended_data[var][i:i+number_time_slices] = (
                     xr_data[var].isel(time=slice(0, number_time_slices)).values
                 )
+    return xr_extended_data
 
 
-def append_data_to_end(xr_data, xr_extended_data, simulation_time,
-                       number_time_slices):
+def append_data_to_end(
+        xr_data, xr_extended_data, simulation_time, number_time_slices
+        ):
     """
     Append data to the end of the extended DataArray or Dataset.
 
@@ -432,6 +404,8 @@ def append_data_to_end(xr_data, xr_extended_data, simulation_time,
                     xr_data[var].isel(time=slice(-number_time_slices, None)
                                       ).values)
 
+    return xr_extended_data
+
 
 def insert_original_data(xr_data, xr_extended_data, xr_data_time):
     """
@@ -455,48 +429,135 @@ def insert_original_data(xr_data, xr_extended_data, xr_data_time):
         for var in xr_data.data_vars:
             xr_extended_data[var][original_time_index] = xr_data[var].values
 
+    return xr_extended_data
 # =============================================================
 # UTILITY FUNCTIONS
 # =============================================================
 
 
-def get_dataset_by_sector_and_variable(datasets, target_sector,
-                                       target_variable):
+def initialize_logs():
+    """Initialize the logs for tracking issues with datasets."""
+    return {
+        "multiple_variables": [],  # decisive
+        "unknown_names": [],  # not decisive
+        "incorrect_units": [],
+        "missing_unit": [],
+        "lat_lon_check_flag": True,  # decisive
+        "lat_lon_reference": None,  # only needed for check_spatial_coords
+        "not_covering_period": [],  # decisive, if time_extend_mode disabled
+        "incorrect_time_resolution": [],  # decisive
+        "missing_time_coords": [],  # decisive
+        "time_extended_data": []  # only information
+    }
+
+
+def generate_validation_results(logs):
     """
-    Extract the dataset for given sector and variable from a list of tuples.
+    Generate the results of checks and logs performed on datasets.
 
     Parameters
     ----------
-    datasets : list of tuples
-        A list containing tuples of (dataset, sector, variable).
-    target_sector : str
-        The sector to filter by.
-    target_variable : str
-        The variable to filter by.
+    logs : dict
+        The dictionary containing log information about various dataset issues.
 
     Returns
     -------
-    dataset
-        The dataset that matches the specified sector and variable.
+    dict
+        A dictionary summarizing the results of the checks.
     """
-    for dataset, sector, variable in datasets:
-        if sector == target_sector and variable == target_variable:
-            return dataset
-    return None
+    return {
+        "Input data with unknown variable names": logs["unknown_names"],
+        "Input data with incorrect units": logs["incorrect_units"],
+        "Input data with missing units": logs["missing_unit"],
+        "Input data with multiple variables": logs["multiple_variables"],
+        "Input data which does not cover simulation period":
+            logs["not_covering_period"],
+        "Input data with incorrect time resolution":
+            logs["incorrect_time_resolution"],
+        "Input data with missing time coordinates":
+            logs["missing_time_coords"],
+        "Input data with extended time to cover simulation period":
+            logs["time_extended_data"],
+        "Compatibility of lat and lon coords is given":
+            logs["lat_lon_check_flag"],
+    }
+
+
+def store_preprocessed_dataset(preprocessed_datasets, sector, variable,
+                               dataset, expected_unit):
+    """Store preprocessed datasets by sector and variable."""
+    if sector not in preprocessed_datasets:
+        preprocessed_datasets[sector] = {}
+        preprocessed_datasets[sector]['unit'] = expected_unit
+
+    # Store the variable in the processed dataset
+    preprocessed_datasets[sector][variable] = \
+        next(iter(dataset.data_vars.values()))
+
+    return preprocessed_datasets
+
+
+def check_preprocess_time_variant_input(
+        dataset, start_year, end_year, time_freq, time_extend_mode, log_id,
+        logs):
+    """
+    Validate and preprocess time-variant input data for a given period.
+
+    This function performs validation of the time coverage and resolution of
+    the input dataset. If the dataset does not cover the required period and
+    `time_extend_mode` is enabled, the dataset will be extended. Otherwise,
+    the dataset is trimmed to match the required time period.
+
+    Parameters
+    ----------
+    dataset : xarray.Dataset
+        The dataset containing time-variant data to validate and preprocess.
+    start_year : int
+        The start year of the required time period.
+    end_year : int
+        The end year of the required time period.
+    time_freq : str
+        The expected time frequency (e.g., 'D' for daily, 'M' for monthly).
+    time_extend_mode : bool
+        Flag to enable extending the dataset if it does not cover the full
+        period.
+    log_id : str
+        A unique identifier for logging the dataset's validation results.
+    logs : dict
+        A dictionary used for tracking validation results and preprocessing
+        steps.
+
+    Returns
+    -------
+    dataset : xarray.Dataset)
+        The preprocessed dataset, either extended or trimmed.
+    logs : dict
+        The updated logs reflecting the validation and preprocessing results.
+    """
+    # Step 1: (Validation) Validate time coverage and resolution and log
+    logs = check_time_coords(
+        dataset, time_freq, start_year, end_year, log_id, logs)
+    # Step 2a: Handle dataset depending on whether it covers the period
+    if log_id in logs["not_covering_period"] and time_extend_mode:
+        # 2a: (Preprocessing) Extend dataset if time_extend_mode is enabled
+        dataset = extend_xr_data(dataset, start_year, end_year, time_freq)
+        logs["time_extended_data"].append(log_id)
+    # Step 2b: (Preprocessing) Trim dataset if it covers the required period
+    else:
+        dataset = trim_xr_data(dataset, start_year, end_year)
+
+    return dataset, logs
+
 
 # =============================================================
-# CHECK AND PREPROCESSING ALGORITHM
+# CHECK AND PREPROCESSING MAIN ALGORITHM
 # =============================================================
 
-
-def check_and_preprocess_input_data(datasets,
-                                    conventions,
-                                    start_year,
-                                    end_year,
-                                    correct_irr_t_aai_mode,
-                                    time_extend_mode):
+def check_and_preprocess_input_data(
+        datasets, conventions, start_year, end_year, time_extend_mode
+        ):
     """
-    Check and preprocess algorithm of input datasets.
+    Validate and preprocess input datasets based on input conventions.
 
     Parameters
     ----------
@@ -517,139 +578,58 @@ def check_and_preprocess_input_data(datasets,
     -------
     preprocessed_datasets : dict
         A dictionary of preprocessed datasets by sector and variable.
-    check_results : dict
-        A dictionary containing results of the checks performed on the input
+    logs : dict
+        A dictionary containing results of validation process of the input
         data.
-
-    Notes
-    -----
-    This function performs the following steps:
-    1. Initializes conventions and check flags.
-    2. Checks compatibility of `t_aai_mode` with the end year and input data.
-    3. Checks if dataset variable names are in reference variable names and
-       units of unit variables.
-    4. Logs datasets that do not pass the checks for variable names and units.
-    5. Sorts spatial coordinates in each dataset.
-    6. Checks whether spatial coordinates in every dataset are the same
-       (necessary for model simulation).
-    7. Checks only time-variant variable datasets for correct time resolution
-       and if the dataset covers the simulation period.
-    8. Extends not-covering-period datasets with original data of the first
-       and last year, if the time resolution of the data is correct.
-    9. Trims datasets to the specified period if they cover the simulation
-       period.
-    10. Adds preprocessed datasets to the results dictionary.
-    11. Creates and returns a dictionary of check results.
     """
-    # initialize conventions
+    # Initialize conventions
     reference_names = conventions['reference_names']
     time_variant_vars = conventions['time_variant_vars']
     sector_requirements = conventions['sector_requirements']
 
-    # initialize flag and reference for lat lon check
-    lat_lon_check_flag = True
-    lat_lon_reference = None
-    # initialize flag for compatibility check of t_aai
-    t_aai_correction_mode_compatibility_flag = True
-    # initialize list for logging data that does not pass the checks
-    list_unknown_names_data = []
-    list_incorrect_units_data = []
-    list_not_covering_period_data = []
-    list_incorrect_resolution_data = []
+    # Initialize logs for storing information about incorrect datasets
+    logs = initialize_logs()
 
-    # initialize dict for processed_datasets
+    # Initialize the dictionary for preprocessed datasets
     preprocessed_datasets = {}
-    if correct_irr_t_aai_mode:
-        (correct_irr_t_aai_mode,
-         t_aai_correction_mode_compatibility_flag) = \
-            check_t_aai_mode_compatibility(
-                correct_irr_t_aai_mode,
-                end_year,
-                time_extend_mode,
-                get_dataset_by_sector_and_variable(datasets,
-                                                   'irrigation',
-                                                   'consumptive_use_tot')
-                )
 
+    # Validate and process each dataset in the input
     for dataset, sector, variable in datasets:
-
-        # get input_subfolder_path for dataset for logging
-        folder_path = sector + '/' + variable
-        # =====================================================================
+        log_id = f"{sector}/{variable}"
         # get sector-specific input conventions
         sector_info = sector_requirements.get(sector, {})
-        expected_units = sector_info.get("expected_units")
         unit_vars = sector_info.get("unit_vars", [])
+        expected_units = sector_info.get("expected_units")
         time_freq = sector_info.get("time_freq")
-        # =====================================================================
-        # check variable name and unit in dataset
-        unknown_name_flag, incorrect_unit_flag = \
-            check_variable_metadata(dataset,
-                                    reference_names, expected_units, unit_vars)
 
-        # list datasets with not expected variable name and incorrect unit
-        if unknown_name_flag:
-            list_unknown_names_data.append(folder_path)
-        if incorrect_unit_flag:
-            list_unknown_names_data.append(folder_path)
-        # =====================================================================
-        # preprocessing and checking the spatial coordinates
+        # Validate and process general aspects of the dataset
+        logs = \
+            check_dataset_structure_metadata(
+                dataset, variable, reference_names, unit_vars, expected_units,
+                log_id, logs
+                )
+
+        # Sort spatial coords: latitude descending, longitude ascending
         dataset = sort_lat_desc_lon_asc_coords(dataset)
+        # Validate that spatial coords are same in all datasets
+        logs = \
+            check_spatial_coords(dataset, logs)
 
-        lat_lon_reference, lat_lon_check_flag = \
-            check_lat_lon_coords(dataset, lat_lon_reference)
-        # =====================================================================
-        # check if dataset covers the period and has correct time resolution.
-
-        # trim dataset to simulation period if it exceeds the period
-
-        # extend dataset if time_extend_mode is true and
-        # it does not cover the period but time resolution is correct
         if variable in time_variant_vars:
-            not_covering_period_flag, incorrect_resolution_flag = \
-                check_time_coords(dataset,
-                                  time_freq, start_year, end_year)
-            # list dataset with incorrect time resolution
-            if incorrect_resolution_flag:
-                list_incorrect_resolution_data.append(folder_path)
+            # Validate and preprocess time aspects of dataset
+            dataset, logs = check_preprocess_time_variant_input(
+                dataset, start_year, end_year, time_freq, time_extend_mode,
+                log_id, logs)
 
-            if not_covering_period_flag:
-                if incorrect_resolution_flag:
-                    if variable == 'time_factor_aai':
-                        if correct_irr_t_aai_mode:
-                            dataset = \
-                                extend_xr_data(dataset, start_year, end_year,
-                                               time_freq)
-                            not_covering_period_flag = False
-                        else:
-                            not_covering_period_flag = False
-                    elif time_extend_mode:
-                        dataset = extend_xr_data(dataset, start_year, end_year,
-                                                 time_freq)
-                        not_covering_period_flag = False
-            else:
-                dataset = trim_xr_data(dataset, start_year, end_year)
-        # list not_covering_period_datasets for logging
-            if not_covering_period_flag:
-                list_not_covering_period_data.append(folder_path)
-        # =====================================================================
-        # ensure correct dimension order
+        # Ensure correct dimension order
         dataset = ensure_correct_dimension_order(dataset)
-        # =====================================================================
-        if sector not in preprocessed_datasets:
-            preprocessed_datasets[sector] = {}
-        preprocessed_datasets[sector][variable] = \
-            next(iter(dataset.data_vars.values()))  # from xr.ds to xr.array
-    check_results = \
-        {"Input data with unknown variable names": list_unknown_names_data,
-         "Input data with incorrect units": list_incorrect_units_data,
-         "Input data which not covers simulation period": (
-             list_not_covering_period_data),
-         "Input data with incorrect time resolution": (
-             list_incorrect_resolution_data),
-         "Compatibility of lat and lon coords is given": lat_lon_check_flag,
-         "Compatibility of correct_irr_t_aai_mode is given": (
-             t_aai_correction_mode_compatibility_flag)
-         }
+        # Store preprocessed dataset in dictionairy
+        preprocessed_datasets = \
+            store_preprocessed_dataset(
+                preprocessed_datasets, sector, variable, dataset,
+                expected_units[0])
 
-    return preprocessed_datasets, correct_irr_t_aai_mode, check_results
+    # return preprocessed_datasets, logs
+    validation_results = generate_validation_results(logs)
+
+    return preprocessed_datasets, validation_results
