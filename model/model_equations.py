@@ -413,6 +413,7 @@ def calc_irr_abstraction_totgwsw(irr_consumptive_use_gw, irr_efficiency_gw,
         Irrigation-specific consumptive water use from groundwater.
     irr_efficiency_gw : numpy.ndarray or float
         Irrigation efficiency for groundwater.
+
     Returns
     -------
     irr_abstraction_gw : numpy.ndarray
@@ -435,60 +436,6 @@ def calc_irr_abstraction_totgwsw(irr_consumptive_use_gw, irr_efficiency_gw,
 #            =======================================
 #            || CROSS-SECTOR SIMULATION FUNCTIONS ||
 #            =======================================
-
-
-def sum_volume_per_time_variable(irr_monthly,
-                                 dom_annual,
-                                 man_annual,
-                                 tp_annual,
-                                 liv_annual):
-    """
-    Sum the volume per time variable for multiple sectors.
-
-    This function calculates the total volume per time variable for multiple
-    sectors by summing the monthly values of irrigation (m³/day), domestic,
-    manufacturing, thermal power, and livestock sectors.
-
-    The volume-per-time variables for which the function is intended are:
-    - Consumptive use from groundwater (consumptive_use_gw), surface water
-      (consumptive_use_sw) or both (consumptive_use_tot).
-    - Water abstraction from groundwater (abstraction_gw), surface water
-      (abstraction_sw) or both (abstraction_tot).
-    - Return flow (rf) to groundwater (return_flow_gw), surface water
-      (return_flow_sw) or both (return_flow_tot).
-    - Net abstractions from groundwater (net_abstraction_gw) or surface water
-      (net_abstraction_sw).
-
-    Parameters
-    ----------
-    irr_monthly : numpy.ndarray
-        Monthly irrigation data array (m³/day).
-    dom_annual : numpy.ndarray
-        Annual domestic data array (m³/day).
-    man_annual : numpy.ndarray
-        Annual manufacturing data array (m³/day).
-    tp_annual : numpy.ndarray
-        Annual thermal power data array (m³/day).
-    liv_annual : numpy.ndarray
-        Annual livestock data array (m³/day).
-
-    Returns
-    -------
-    total_sectors_monthly : numpy.ndarray
-        Total volume per time variable for all sectors combined, represented as
-        a monthly data array (m³/day).
-
-    """
-    dom_man_tp_liv_sum_annual = \
-        dom_annual + man_annual + tp_annual + liv_annual
-
-    dom_man_tp_liv_sum_monthly = \
-        tc.expand_array_size(dom_man_tp_liv_sum_annual)
-
-    total_sectors_monthly = \
-        irr_monthly + dom_man_tp_liv_sum_monthly
-
-    return total_sectors_monthly
 
 
 def calculate_cross_sector_totals(irr_monthly_m3_month,
