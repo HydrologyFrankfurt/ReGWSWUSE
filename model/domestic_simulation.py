@@ -8,17 +8,24 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-
 """ GWSWUSE domestic simulation module."""
 
-import time
+import os
 import xarray as xr
 from controller import configuration_module as cm
 from model import model_equations as me
 from model import time_unit_conversion as tc
 
+# ===============================================================
+# Get module name and remove the .py extension
+# Module name is passed to logger
+# # =============================================================
+modname = os.path.basename(__file__)
+modname = modname.split('.')[0]
+
 
 class DomesticSimulator:
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle domestic water use simulations in the GWSWUSE model.
 
@@ -119,25 +126,10 @@ class DomesticSimulator:
         # Run the domestic simulation
         self.simulate_domestic()
 
-        print("Domestic simulation was performed. \n")
+        # print("Domestic simulation was performed. \n")
 
     def simulate_domestic(self):
-        """
-        Run the domestic simulation with provided data and model equations.
-        """
-        if cm.cell_specific_output['Flag']:
-            print('dom_cu_tot_m3_year:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_wu_tot_m3_year:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-        # Convert total consumptive use to m3/day
-        self.consumptive_use_tot = \
-            tc.convert_yearly_to_daily(self.consumptive_use_tot)
-
-        # Convert total abstraction to m3/day
-        self.abstraction_tot = \
-            tc.convert_yearly_to_daily(self.abstraction_tot)
-
+        """Run domestic simulation with provided data and model equations."""
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
@@ -161,46 +153,79 @@ class DomesticSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
+        # pylint: disable=consider-using-f-string
         if cm.cell_specific_output['Flag']:
-            print('dom_cu_tot_m3_day:'
-                  f'{self.consumptive_use_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_wu_tot_m3_day:'
-                  f'{self.abstraction_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_f_gw_use:'
-                  f'{self.fraction_gw_use[self.lat_idx, self.lon_idx]}')
-            print('dom_cu_gw_m3_day:'
-                  f'{self.consumptive_use_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_cu_sw_m3_day:'
-                  f'{self.consumptive_use_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_wu_gw_m3_day:'
-                  f'{self.abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_wu_sw_m3_day:'
-                  f'{self.abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_rf_tot_m3_day:'
-                  f'{self.return_flow_tot[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_f_gw_return:'
-                  f'{self.fraction_return_gw}')
-            print('dom_rf_gw_m3_day:'
-                  f'{self.return_flow_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_rf_sw_m3_day:'
-                  f'{self.return_flow_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_na_gw_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_na_sw_m3_day:'
-                  f'{self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}')
-            print('dom_na_tot_m3_day:'
-                  f'{self.net_abstraction_gw[self.time_idx, self.lat_idx, self.lon_idx] + self.net_abstraction_sw[self.time_idx, self.lat_idx, self.lon_idx]}\n')
+            print('dom_consumptive_use_tot [m3/year]: {}'.format(
+                self.consumptive_use_tot[self.time_idx,
+                                          self.lat_idx,
+                                          self.lon_idx]))
+
+            print('dom_abstraction_tot [m3/year]: {}'.format(
+                self.abstraction_tot[self.time_idx,
+                                      self.lat_idx,
+                                      self.lon_idx]))
+
+            print('dom_fraction_gw_use [-]: {}'.format(
+                self.fraction_gw_use[self.lat_idx,
+                                      self.lon_idx]))
+
+            print('dom_consumptive_use_gw [m3/year]: {}'.format(
+                self.consumptive_use_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('dom_consumptive_use_sw [m3/year]: {}'.format(
+                self.consumptive_use_sw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('dom_abstraction_gw [m3/year]: {}'.format(
+                self.abstraction_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('dom_abstraction_sw [m3/year]: {}'.format(
+                self.abstraction_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('dom_return_flow_tot [m3/year]: {}'.format(
+                self.return_flow_tot[self.time_idx,
+                                      self.lat_idx,
+                                      self.lon_idx]))
+
+            print('dom_fraction_return_gw [-]: {}'.format(
+                self.fraction_return_gw))
+
+            print('dom_return_flow_gw [m3/year]: {}'.format(
+                self.return_flow_gw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('dom_return_flow_sw [m3/year]: {}'.format(
+                self.return_flow_sw[self.time_idx,
+                                    self.lat_idx,
+                                    self.lon_idx]))
+
+            print('dom_net_abstraction_gw [m3/year]: {}'.format(
+                self.net_abstraction_gw[self.time_idx,
+                                        self.lat_idx,
+                                        self.lon_idx]))
+
+            print('dom_net_abstraction_sw [m3/year]: {} \n'.format(
+                    self.net_abstraction_sw[self.time_idx,
+                                            self.lat_idx,
+                                            self.lon_idx]))
 
 
-if __name__ == "__main__":
-    from controller import configuration_module as cm
-    from controller import input_data_manager as idm
+# if __name__ == "__main__":
+#     from controller import input_data_manager as idm
 
-    preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode
-                               )
-    dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])
+#     preprocessed_gwswuse_data, _, _, _ = \
+#         idm.input_data_manager(cm.input_data_path,
+#                                cm.gwswuse_convention_path,
+#                                cm.start_year,
+#                                cm.end_year,
+#                                cm.time_extend_mode
+#                                )
+#     dom = DomesticSimulator(preprocessed_gwswuse_data['domestic'])
