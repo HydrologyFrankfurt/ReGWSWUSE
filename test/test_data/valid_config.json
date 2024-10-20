@@ -1,0 +1,66 @@
+{
+  "FilePath": {
+    "inputDir": {
+      "input_data": "./input_data/",
+      "gwswuse_convention": "./gwswuse_convention.json"
+    },
+    "outputDir": "./output_data/"
+  },
+  "RuntimeOptions":{
+      "SimulationOption": {
+        "time_extend_mode": false,
+        "irrigation_efficiency_gw_mode": "enforce",
+        "irrigation_input_based_on_aei": false,
+        "correct_irr_simulation_by_t_aai": false,
+        "deficit_irrigation_mode": true 
+      },
+      "ParameterSetting": {
+        "efficiency_gw_threshold": 0.7,
+        "deficit_irrigation_factor": 0.7
+      },
+      "SimulationPeriod":{
+        "start": 1901, 
+        "end": 1905
+      },
+      "CellSpecificOutput": {
+        "Flag": true,
+        "coords": {
+          "lat": 30.75,
+          "lon": 30.75,
+          "year": 1901,
+          "month": 5
+       }
+      }
+  },
+  "OutputSelection": {
+    "WGHM_input_run": false,
+    "Sectors": {
+      "total": true,
+      "irrigation": false,
+      "domestic": false,
+      "manufacturing": false,
+      "thermal_power": false,
+      "livestock": false
+    },
+    "GWSWUSE variables": {
+      "consumptive_use": {
+        "tot": false,  "gw": false, "sw": false
+      },
+      "abstraction": {
+        "tot": false, "gw": false, "sw": false
+      },
+      "return_flow": {
+        "tot": false, "gw": false, "sw": false
+      },
+      "net_abstraction": {
+        "gw": true, "sw": true
+      },
+      "irrigation_efficiency": {
+        "gw": false, "sw": false
+      },
+      "deficit_irrigation_location": false
+    },
+    "Global_Annual_Totals": true
+  }
+}
+
