@@ -602,6 +602,8 @@ def check_and_preprocess_input_data(
         expected_units = sector_info.get("expected_units")
         time_freq = sector_info.get("time_freq")
 
+        # Set all dataset data to float64
+        dataset = dataset.astype('float64')
         # Validate and process general aspects of the dataset
         logs = \
             check_dataset_structure_metadata(
