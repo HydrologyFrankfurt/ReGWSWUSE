@@ -221,8 +221,7 @@ def set_irr_deficit_locations(gwd_mask,
 
 # @njit(cache=True)
 def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
-                                         deficit_irrigation_location,
-                                         deficit_irrigation_mode=True):
+                                         deficit_irrigation_location):
     """
     Calculate the total consumptive use adjusted for deficit irrigation.
 
@@ -230,9 +229,7 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
         - Irrigation
 
     This function adjusts the total consumptive water use based on the
-    specified deficit irrigation locations. If `deficit_flag` is True, it
-    applies a modification factor to the consumptive use, otherwise no
-    adjustment is made.
+    specified deficit irrigation locations.
 
     Parameters
     ----------
@@ -241,34 +238,28 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
     deficit_irrigation_location : np.ndarray or xr.DataArray
         A factor or array of factors that reduce the consumptive use based on
         deficit irrigation practices.
-    deficit_flag : bool
-        Flag to determine whether the adjustment should be applied.
-        Defaults to True, based on WaterGAP 2.2d.
 
     Returns
     -------
     irr_deficit_consumptive_use_tot : np.ndarray or xr.DataArray
-        The adjusted total consumptive use of water, in the same format as
-        `cu_tot`.
+        Irrigation consumptive use of water, taking into account deficit
+        irrigation locations.
 
     """
-    if deficit_irrigation_mode:
-        irr_deficit_consmptive_use_tot = \
-            irr_consumptive_use_tot * deficit_irrigation_location
-        return irr_deficit_consmptive_use_tot
+    irr_deficit_consmptive_use_tot = \
+        irr_consumptive_use_tot * deficit_irrigation_location
+    return irr_deficit_consmptive_use_tot
 
-    return irr_consumptive_use_tot  # No adjustment made
 
 #                  =======================================
 #                  ||  CORRECTION WITH QUOTIENT_AAI_AEI ||
 #                  =======================================
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def calc_irr_consumptive_use_aai(
-        irr_consumptive_use_tot_input,
-        fraction_aai_aei,
-        irrigation_input_based_on_aei):
+        irr_consumptive_use_tot_input, fraction_aai_aei
+        ):
     """
     Calc total consumptive use for area, actually irrigated.
 
@@ -277,33 +268,23 @@ def calc_irr_consumptive_use_aai(
 
     Parameters
     ----------
-    irr_consumptive_use_tot : numpy.ndarray
-        Total consumptive water use for irrigation, which can be the output
-        from `calc_irr_consumptive_use_aai`, representing the initial
-        consumptive use values for the area actually irrigated (AAI).
-    time_factor_aai : numpy.ndarray
-        Represents the development of country-specific AAI (Area Actually
-        Irrigated) from 2016 onwards, relative to the reference year 2015. This
-        factor is used to adjust the consumptive use values to account for
-        changes in irrigation practices or area actually irrigated over time.
-    correct_irr_t_aai_mode : bool
-        Flag indicating whether the irrigation consumptive use should be
-        corrected with the time factor for AAI (True) or not (False).
+    irr_consumptive_use_tot_input : numpy.ndarray
+        Total water consumptive use for irrigation, based on areas equipped for
+        irrigation (AEI).
+    fraction_aai_aei : numpy.ndarray
+        DESCRIPTION
 
     Returns
     -------
-    irr_consumptive_use_tot_t_aai : numpy.ndarray
-        Corrected total consumptive water use for the area actually irrigated
-        if `correct_irr_t_aai_mode` is True; otherwise, returns the original
-        `irr_consumptive_use_tot`.
+    irr_consumptive_use_tot_aai : numpy.ndarray
+        Total water consumptive use for irrigation, based on areas actually
+        irrigated (AAI).
 
 
     """
-    if irrigation_input_based_on_aei:
-        irr_consumptive_use_tot_aai = \
-            irr_consumptive_use_tot_input * fraction_aai_aei
-    else:
-        irr_consumptive_use_tot_aai = irr_consumptive_use_tot_input
+    irr_consumptive_use_tot_aai = \
+        irr_consumptive_use_tot_input * fraction_aai_aei
+
     return irr_consumptive_use_tot_aai
 
 #                  =================================
@@ -311,10 +292,10 @@ def calc_irr_consumptive_use_aai(
 #                  =================================
 
 
-# @njit(cache=True)
-def correct_irr_consumptive_use_by_t_aai(irr_consumptive_use_tot,
-                                         time_factor_aai,
-                                         correct_irr_t_aai_mode):
+@njit(cache=True)
+def correct_irr_consumptive_use_by_t_aai(
+        irr_consumptive_use_tot, time_factor_aai
+        ):
     """
     Correct irrigation consumptive use tot after 2016 with time factor for aai.
 
@@ -324,23 +305,24 @@ def correct_irr_consumptive_use_by_t_aai(irr_consumptive_use_tot,
     Parameters
     ----------
     irr_consumptive_use_tot : numpy.ndarray
-        DESCRIPTION.
+        Total water consumptive use for irrigation.
     time_factor_aai : numpy.ndarray
-        DESCRIPTION.
-    correct_with_t_aai_mode : bool
-        DESCRIPTION.
+        Represents the development of country-specific AAI (Area Actually
+        Irrigated) from 2016 onwards, relative to the reference year 2015. This
+        factor is used to adjust the consumptive use values to account for
+        changes in irrigation practices or area actually irrigated over time.
 
     Returns
     -------
     irr_consumptive_use_tot_t_aai : numpy.ndarray
-        DESCRIPTION.
+        Total water consumptive use for irrigation, corrected with
+        time_factor_aai.
 
     """
-    if correct_irr_t_aai_mode is True:
-        irr_consumptive_use_tot_correct_by_t_aai = \
-            irr_consumptive_use_tot * time_factor_aai
-        return irr_consumptive_use_tot_correct_by_t_aai
-    return irr_consumptive_use_tot
+    irr_consumptive_use_tot_correct_by_t_aai = \
+        irr_consumptive_use_tot * time_factor_aai
+
+    return irr_consumptive_use_tot_correct_by_t_aai
 
 #                  =================================
 #                  || GWSW IRRIGATION EFFICIENCIES||

@@ -8,14 +8,12 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-
-""" GWSWUSE thermal power simulation module."""
-# from source.controller import configuration_module as cm
+"""GWSWUSE thermal power simulation module."""
 
 import os
 import xarray as xr
 from model import model_equations as me
-from model import time_unit_conversion as tc
+from misc import cell_simulation_printer as csp
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -96,7 +94,10 @@ class ThermalPowerSimulator:
             variables.
         """
         # Initialize relevant configuration settings
-        self.cso_flag = config.cell_specific_output['flag']
+        self.csp_flag = config.cell_specific_output['flag']
+
+        # Set unit
+        self.unit = tp_data['unit']
 
         # Set total consumptive use input [m3/year]
         self.consumptive_use_tot = tp_data['consumptive_use_tot'].values
@@ -118,16 +119,15 @@ class ThermalPowerSimulator:
              else 0)
         # Store the coordinates for later use
         self.coords = tp_data['consumptive_use_tot'].coords
-
-        if self.cso_flag:
-            print("Thermal power specific values for "
-                  f"lat: {config.cell_specific_output['coords']['lat']}, "
-                  f"lon: {config.cell_specific_output['coords']['lon']},"
-                  f"year: {config.cell_specific_output['coords']['year']}")
-            self.time_idx, self.lat_idx, self.lon_idx = \
-                tc.get_np_coords_cell_output(tp_data['consumptive_use_tot'],
-                                             'thermal_power',
-                                             config.cell_specific_output)
+        # print headline for cell simulation prints
+        csp.print_cell_output_headline(
+            'thermal_power', config.cell_specific_output, self.csp_flag
+            )
+        # get idx for coords for cell specific output
+        self.coords_idx = csp.get_np_coords_cell_idx(
+            tp_data['consumptive_use_tot'], 'thermal_power',
+            config.cell_specific_output, self.csp_flag
+            )
 
         # Run the irrigation simulation
         self.simulate_thermal_power()
@@ -159,65 +159,55 @@ class ThermalPowerSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        if self.cso_flag:
-            print('tp_consumptive_use_tot [m3/year]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
-
-            print('tp_abstraction_tot [m3/year]: {}'.format(
-                self.abstraction_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('tp_fraction_gw_use [-]: {}'.format(
-                self.fraction_gw_use))
-
-            print('tp_consumptive_use_gw [m3/year]: {}'.format(
-                self.consumptive_use_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('tp_consumptive_use_sw [m3/year]: {}'.format(
-                self.consumptive_use_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('tp_abstraction_gw [m3/year]: {}'.format(
-                self.abstraction_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('tp_abstraction_sw [m3/year]: {}'.format(
-                self.abstraction_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('tp_return_flow_tot [m3/year]: {}'.format(
-                self.return_flow_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('tp_fraction_return_gw [-]: {}'.format(
-                self.fraction_return_gw))
-
-            print('tp_return_flow_gw [m3/year]: {}'.format(
-                self.return_flow_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('tp_return_flow_sw [m3/year]: {}'.format(
-                self.return_flow_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('tp_net_abstraction_gw [m3/year]: {}'.format(
-                self.net_abstraction_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('tp_net_abstraction_sw [m3/year]: {}'.format(
-                    self.net_abstraction_sw[self.time_idx,
-                                            self.lat_idx,
-                                            self.lon_idx]))
-            print()
+        csp.print_cell_value(
+            self.consumptive_use_tot, 'tp_consumptive_use_tot',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_tot, 'tp_abstraction_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_gw_use, 'tp_fraction_gw_use', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_gw, 'tp_consumptive_use_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_sw, 'tp_consumptive_use_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_gw, 'tp_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_sw, 'tp_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag)
+        csp.print_cell_value(
+            self.return_flow_tot, 'tp_return_flow_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_return_gw, 'tp_fraction_return_gw', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_gw, 'tp_return_flow_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_sw, 'tp_return_flow_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_gw, 'tp_net_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_sw, 'tp_net_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        print()
