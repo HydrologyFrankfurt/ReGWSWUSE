@@ -1,0 +1,9 @@
+numpy
+pandas
+numba
+xarray
+dask
+termcolor
+netCDF4
+h5netcdf
+openpyxl
