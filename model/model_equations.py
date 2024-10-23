@@ -368,7 +368,6 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
         efficiency_gw = np.where(np.isnan(efficiency_sw),
                                  efficiency_sw,
                                  np.maximum(efficiency_sw, threshold))
-
     return efficiency_gw
 
 #                  =================================
