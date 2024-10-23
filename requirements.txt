@@ -1,9 +1,9 @@
 numpy
 pandas
+dask
 numba
 xarray
-dask
+openpyxl
 termcolor
 netCDF4
 h5netcdf
-openpyxl
