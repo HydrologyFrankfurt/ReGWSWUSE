@@ -1,10 +1,21 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# This file is part of WaterGAP.
+
+# WaterGAP is an opensource software which computes water flows and storages as
+# well as water withdrawals and consumptive uses on all continents.
+
+# You should have received a copy of the LGPLv3 License along with WaterGAP.
+# if not see <https://www.gnu.org/licenses/lgpl-3.0>
+# =============================================================================
+"""Test controller.input_data_check_preprocessing module"""
+
 import unittest
 import xarray as xr
 import numpy as np
 import pandas as pd
 from controller.input_data_check_preprocessing import (
-    check_and_preprocess_input_data, initialize_logs,
-    generate_validation_results)
+    check_and_preprocess_input_data)
 
 class TestValidationPreprocessing(unittest.TestCase):
     def setUp(self):
