@@ -1,7 +1,7 @@
 {
   "FilePath": {
     "inputDir": {
-      "input_data": "./input_data/",
+      "input_data": "./input_data/"
       "gwswuse_convention": "./gwswuse_convention.json"
     },
     "outputDir": "./output_data/"
@@ -63,5 +63,4 @@
     "Global_Annual_Totals": true
   }
 }
-
 

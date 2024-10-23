@@ -1,12 +1,12 @@
 {
   "FilePath": {
     "inputDir": {
-      "input_data": "./input_data/",
+      "input_data": 123456,
       "gwswuse_convention": "./gwswuse_convention.json"
     },
     "outputDir": "./output_data/"
   },
-  "RuntimeOptions":
+  "RuntimeOptions":{
       "SimulationOption": {
         "time_extend_mode": false,
         "irrigation_efficiency_gw_mode": "enforce",
@@ -23,7 +23,7 @@
         "end": 1905
       },
       "CellSpecificOutput": {
-        "Flag": true,
+        "flag": true,
         "coords": {
           "lat": 30.75,
           "lon": 30.75,
@@ -53,7 +53,7 @@
         "tot": false, "gw": false, "sw": false
       },
       "net_abstraction": {
-        "gw": true, "sw": true
+        "gw": false, "sw": false
       },
       "irrigation_efficiency": {
         "gw": false, "sw": false
@@ -63,4 +63,3 @@
     "Global_Annual_Totals": true
   }
 }
-
