@@ -27,7 +27,7 @@
     "sector_requirements": {
         "irrigation": {
             "time_freq": "monthly",
-            "expected_units": "m3/month",
+            "expected_units": ["m3/month"],
             "expected_vars": [
                 "consumptive_use_tot", "fraction_gw_use", "fraction_return_gw",
                 "irrigation_efficiency_sw", "gwd_mask", "abstraction_irr_part_mask",
@@ -37,7 +37,7 @@
         },
         "domestic": {
             "time_freq": "annual",
-            "expected_units": "m3/year",
+            "expected_units": ["m3/year"],
             "expected_vars": [
                 "consumptive_use_tot", "abstraction_tot", "fraction_gw_use"
             ],
@@ -45,19 +45,19 @@
         },
         "thermal_power": {
             "time_freq": "annual",
-            "expected_units": "m3/year",
+            "expected_units": ["m3/year"],
             "expected_vars": ["consumptive_use_tot", "abstraction_tot"],
             "unit_vars": ["consumptive_use_tot", "abstraction_tot"]
         },
         "livestock": {
             "time_freq": "annual",
-            "expected_units": "m3/year",
+            "expected_units": ["m3/year"],
             "expected_vars": ["consumptive_use_tot"],
             "unit_vars": ["consumptive_use_tot"]
         },
         "manufacturing": {
             "time_freq": "annual",
-            "expected_units": "m3/year",
+            "expected_units": ["m3/year"],
             "expected_vars": [
                 "consumptive_use_tot", "abstraction_tot", "fraction_gw_use"
             ],

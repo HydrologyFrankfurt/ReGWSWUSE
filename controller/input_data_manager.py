@@ -104,16 +104,16 @@ def load_netcdf_files(input_data_path, sector_requirements):
 def check_results_handling(check_results):
     """Handle input data check results."""
     for key, value in check_results.items():
-        pass
-        # print(f"{key}:")
+        # pass
+        print(f"{key}:")
         if isinstance(value, list) and value:
             for item in value:
-                pass
-        #         print(f"  - {item}")
+                # pass
+                print(f"  - {item}")
         else:
-            pass
-        #     print(f"  {value}")
-        # print()  # Leere Zeile zur besseren Lesbarkeit  # Logging
+            # pass
+            print(f"  {value}")
+        print()  # Leere Zeile zur besseren Lesbarkeit  # Logging
 
 # =============================================================================
 # INPUT DATA MANAGER MAIN FUNCTION
@@ -174,12 +174,11 @@ def input_data_manager(input_data_path,
 
     # check and preprocess input_data
     print('Checking and preprocessing input data ...\n')
-    preprocessed_data, correct_irr_t_aai_mode, check_results = \
+    preprocessed_data, check_results = \
         check_and_preprocess_input_data(datasets,
                                         conventions,
                                         start_year,
                                         end_year,
-                                        correct_irr_t_aai_mode,
                                         time_extend_mode)
 
     check_results_handling(check_results)

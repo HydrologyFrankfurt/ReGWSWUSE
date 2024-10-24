@@ -23,7 +23,7 @@
         "end": 1905
       },
       "CellSpecificOutput": {
-        "Flag": true,
+        "flag": true,
         "coords": {
           "lat": 30.75,
           "lon": 30.75,

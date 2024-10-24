@@ -8,13 +8,12 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-""" GWSWUSE livestock simulation module."""
+"""GWSWUSE livestock simulation module."""
 
 import os
 import xarray as xr
-from controller import configuration_module as cm
 from model import model_equations as me
-from model import time_unit_conversion as tc
+from misc import cell_simulation_printer as csp
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -23,7 +22,7 @@ from model import time_unit_conversion as tc
 modname = os.path.basename(__file__)
 modname = modname.split('.')[0]
 
-    
+
 class LivestockSimulator:
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
@@ -82,7 +81,7 @@ class LivestockSimulator:
         (input)
     """
 
-    def __init__(self, liv_data):
+    def __init__(self, liv_data, config):
         """
         Initialize the LivestockSimulator with data and run the simulation.
 
@@ -92,6 +91,12 @@ class LivestockSimulator:
             Dictionary containing xarray.DataArrays for various livestock
             variables.
         """
+        # Initialize relevant configuration settings
+        self.csp_flag = config.cell_specific_output['flag']
+
+        # Set unit
+        self.unit = liv_data['unit']
+
         # Set total consumptive use input [m3/year]
         self.consumptive_use_tot = liv_data['consumptive_use_tot'].values
 
@@ -116,16 +121,15 @@ class LivestockSimulator:
              else 0)
         # Store the coordinates for later use
         self.coords = liv_data['consumptive_use_tot'].coords
-
-        if cm.cell_specific_output['Flag']:
-            print("Livestock specific values for "
-                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
-                  f"lon: {cm.cell_specific_output['coords']['lon']},"
-                  f"year: {cm.cell_specific_output['coords']['year']}")
-            self.time_idx, self.lat_idx, self.lon_idx = \
-                tc.get_np_coords_cell_output(liv_data['consumptive_use_tot'],
-                                             'livestock',
-                                             cm.cell_specific_output)
+        # print headline for cell simulation prints
+        csp.print_cell_output_headline(
+            'livestock', config.cell_specific_output, self.csp_flag
+            )
+        # get idx for coords for cell specific output
+        self.coords_idx = csp.get_np_coords_cell_idx(
+            liv_data['consumptive_use_tot'], 'livestock',
+            config.cell_specific_output, self.csp_flag
+            )
 
         # Run the irrigation simulation
         self.simulate_livestock()
@@ -157,77 +161,55 @@ class LivestockSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        if cm.cell_specific_output['Flag']:
-            print('liv_consumptive_use_tot [m3/year]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
-
-            print('liv_abstraction_tot [m3/year]: {}'.format(
-                self.abstraction_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('liv_fraction_gw_use [-]: {}'.format(
-                self.fraction_gw_use))
-
-            print('liv_consumptive_use_gw [m3/year]: {}'.format(
-                self.consumptive_use_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('liv_consumptive_use_sw [m3/year]: {}'.format(
-                self.consumptive_use_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('liv_abstraction_gw [m3/year]: {}'.format(
-                self.abstraction_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('liv_abstraction_sw [m3/year]: {}'.format(
-                self.abstraction_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('liv_return_flow_tot [m3/year]: {}'.format(
-                self.return_flow_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('liv_fraction_return_gw [-]: {}'.format(
-                self.fraction_return_gw))
-
-            print('liv_return_flow_gw [m3/year]: {}'.format(
-                self.return_flow_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('liv_return_flow_sw [m3/year]: {}'.format(
-                self.return_flow_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('liv_net_abstraction_gw [m3/year]: {}'.format(
-                self.net_abstraction_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('liv_net_abstraction_sw [m3/year]: {} \n'.format(
-                    self.net_abstraction_sw[self.time_idx,
-                                            self.lat_idx,
-                                            self.lon_idx]))
-
-
-if __name__ == "__main__":
-    from controller.input_data_manager import input_data_manager
-
-    preprocessed_gwswuse_data, _, _, _ = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.time_extend_mode
-                           )
-    liv = LivestockSimulator(preprocessed_gwswuse_data['livestock'])
+        csp.print_cell_value(
+            self.consumptive_use_tot, 'liv_consumptive_use_tot',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_tot, 'liv_abstraction_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_gw_use, 'liv_fraction_gw_use', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_gw, 'liv_consumptive_use_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_sw, 'liv_consumptive_use_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_gw, 'liv_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_sw, 'liv_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag)
+        csp.print_cell_value(
+            self.return_flow_tot, 'liv_return_flow_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_return_gw, 'liv_fraction_return_gw', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_gw, 'liv_return_flow_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_sw, 'liv_return_flow_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_gw, 'liv_net_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_sw, 'liv_net_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        print()

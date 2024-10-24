@@ -8,14 +8,12 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-""" GWSWUSE irrigation simulation module."""
+"""GWSWUSE irrigation simulation module."""
 
 import os
 import xarray as xr
-from controller import configuration_module as cm
 from model import model_equations as me
-from model import time_unit_conversion as tc
-
+from misc import cell_simulation_printer as csp
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -104,7 +102,8 @@ class IrrigationSimulator:
         (input)
     """
 
-    def __init__(self, irr_data):
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
+    def __init__(self, irr_data, config):
         """
         Initialize the IrrigationSimulator with data and run the simulation.
 
@@ -114,6 +113,21 @@ class IrrigationSimulator:
             Dictionary containing xarray.DataArrays for various irrigation
             variables.
         """
+        # Initialize configuration settings
+        self.csp_flag = config.cell_specific_output['flag']
+
+        self.irrigation_input_based_on_aei = \
+            config.irrigation_input_based_on_aei
+        self.correct_irrigation_t_aai_mode = \
+            config.correct_irrigation_t_aai_mode
+        self.deficit_irrigation_factor = config.deficit_irrigation_factor
+        self.deficit_irrigation_mode = config.deficit_irrigation_mode
+        self.efficiency_gw_mode = config.irrigation_efficiency_gw_mode
+        self.efficiency_gw_threshold = config.efficiency_gw_threshold
+
+        # Set unit
+        self.unit = irr_data['unit']
+
         # Set total consumptive use input [m3/month]
         self.consumptive_use_tot = irr_data['consumptive_use_tot'].values
 
@@ -141,7 +155,7 @@ class IrrigationSimulator:
         self.deficit_irrigation_location = \
             me.set_irr_deficit_locations(self.gwd_mask,
                                          self.abstraction_irr_part_mask,
-                                         cm.deficit_irrigation_factor)
+                                         self.deficit_irrigation_factor)
 
         # Set fraction_aai_aei
         self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
@@ -155,22 +169,21 @@ class IrrigationSimulator:
         # Determine groundwater efficiency based on surface water efficiency
         self.irrigation_efficiency_gw = \
             me.set_irr_efficiency_gw(self.irrigation_efficiency_sw,
-                                     cm.efficiency_gw_threshold,
-                                     cm.efficiency_gw_mode)
+                                     self.efficiency_gw_threshold,
+                                     self.efficiency_gw_mode)
 
         # Store the coordinates for transfer back to xr.DataArray
         self.coords = irr_data['consumptive_use_tot'].coords
 
-        if cm.cell_specific_output['Flag']:
-            print("'Irrigation-specific values for "
-                  f"lat: {cm.cell_specific_output['coords']['lat']}, "
-                  f"lon: {cm.cell_specific_output['coords']['lon']},\n"
-                  f"year: {cm.cell_specific_output['coords']['year']}, "
-                  f"month: {cm.cell_specific_output['coords']['month']}")
-            self.time_idx, self.lat_idx, self.lon_idx = \
-                tc.get_np_coords_cell_output(irr_data['consumptive_use_tot'],
-                                             'irrigation',
-                                             cm.cell_specific_output)
+        # print headline for cell simulation prints
+        csp.print_cell_output_headline(
+            'irrigation', config.cell_specific_output, self.csp_flag
+            )
+        # get idx for coords for cell specific output
+        self.coords_idx = csp.get_np_coords_cell_idx(
+            irr_data['consumptive_use_tot'], 'irrigation',
+            config.cell_specific_output, self.csp_flag
+            )
         # Run the irrigation simulation
         self.simulate_irrigation()
 
@@ -178,77 +191,67 @@ class IrrigationSimulator:
 
     def simulate_irrigation(self):
         """Run irrigation simulation with provided data and model equations."""
-        if cm.cell_specific_output['Flag']:
-            print('irr_consumptive_use_tot [m3/month]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
+        csp.print_cell_value(
+            self.consumptive_use_tot, 'consumptive_use_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
 
         # Calc total consumptive use in irrigation for area actually irrigated
-        self.consumptive_use_tot = \
-            me.calc_irr_consumptive_use_aai(
-                self.consumptive_use_tot,
-                self.fraction_aai_aei,
-                cm.irrigation_input_based_on_aei
+        if self.irrigation_input_based_on_aei:
+            self.consumptive_use_tot = \
+                me.calc_irr_consumptive_use_aai(
+                    self.consumptive_use_tot,
+                    self.fraction_aai_aei
+                    )
+            csp.print_cell_value(
+                self.fraction_aai_aei, 'fraction_aai_aei', self.coords_idx,
+                flag=self.csp_flag
+                )
+            csp.print_cell_value(
+                self.consumptive_use_tot, 'consumptive_use_tot corrected by '
+                'fraction_aai_aei', self.coords_idx, self.unit, self.csp_flag
                 )
 
-        if cm.cell_specific_output['Flag'] and cm.irrigation_input_based_on_aei:
-            print('fraction_aai_aei [-]: {}'.format(
-                self.fraction_aai_aei[self.time_idx,
-                                      self.lat_idx,
-                                      self.lon_idx]))
-
-            print('irr_consumptive_use_tot [m3/month] corrected by '
-                  'fraction_aai_aei: {}'.format(
-                      self.consumptive_use_tot[self.time_idx,
-                                               self.lat_idx,
-                                               self.lon_idx]))
-
-        # Calc deficit total consumptive use in irrigation
-        self.consumptive_use_tot = \
-            me.calc_irr_deficit_consumptive_use_tot(
-                self.consumptive_use_tot,
+        if self.deficit_irrigation_mode:
+            # Calc deficit total consumptive use in irrigation
+            self.consumptive_use_tot = \
+                me.calc_irr_deficit_consumptive_use_tot(
+                    self.consumptive_use_tot,
+                    self.deficit_irrigation_location
+                    )
+            csp.print_cell_value(
+                self.gwd_mask, 'gwd_mask', self.coords_idx, 'bool',
+                self.csp_flag
+                )
+            csp.print_cell_value(
+                self.abstraction_irr_part_mask, 'abstraction_irr_part_mask',
+                self.coords_idx, 'bool', self.csp_flag
+                )
+            csp.print_cell_value(
                 self.deficit_irrigation_location,
-                cm.deficit_irrigation_mode
+                'deficit_irrigation_location_factor',
+                self.coords_idx, flag=self.csp_flag
                 )
-
-        if cm.cell_specific_output['Flag'] and cm.deficit_irrigation_mode:
-            print('gwd_mask [bool]: {}'.format(
-                self.gwd_mask[self.lat_idx,
-                              self.lon_idx]))
-
-            print('abstraction_irr_part_mask [bool]: {}'.format(
-                self.abstraction_irr_part_mask[self.lat_idx,
-                                               self.lon_idx]))
-
-            print('deficit_irrigation_factor [-]: {}'.format(
-                self.deficit_irrigation_location[self.lat_idx,
-                                                 self.lon_idx]))
-
-            print('irr_consumptive_use_tot_deficit [m3/month]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
+            csp.print_cell_value(
+                self.consumptive_use_tot, 'consumptive_use_tot_deficit',
+                self.coords_idx, self.unit, self.csp_flag
+                )
 
         # Correct total consumptive use by time dev for area actually irrigated
-        self.consumptive_use_tot = \
-            me.correct_irr_consumptive_use_by_t_aai(
-                self.consumptive_use_tot,
-                self.time_factor_aai,
-                cm.correct_irr_t_aai_mode
+        if self.correct_irrigation_t_aai_mode:
+            self.consumptive_use_tot = \
+                me.correct_irr_consumptive_use_by_t_aai(
+                    self.consumptive_use_tot, self.time_factor_aai
+                    )
+            csp.print_cell_value(
+                self.time_factor_aai, 'time_factor_aai', self.coords_idx,
+                flag=self.csp_flag
                 )
-
-        if cm.cell_specific_output['Flag'] and cm.correct_irr_t_aai_mode:
-            print('time_factor_aai [-]: {}'.format(
-                self.time_factor_aai[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('irr_consumptive_use_tot [m3/month] corrected by '
-                  'time_factor_aai: {}'.format(
-                      self.consumptive_use_tot[self.time_idx,
-                                               self.lat_idx,
-                                               self.lon_idx]))
+            csp.print_cell_value(
+                self.consumptive_use_tot,
+                'consumptive_use_tot corrected by time_factor_aai',
+                self.coords_idx, self.unit, self.csp_flag
+                )
 
         # Calc consumptive use from groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
@@ -277,79 +280,57 @@ class IrrigationSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        if cm.cell_specific_output['Flag']:
-            print('irr_fraction_gw_use [-]: {}'.format(
-                self.fraction_gw_use[self.lat_idx,
-                                     self.lon_idx]))
-
-            print('irr_consumptive_use_gw [m3/month]: {}'.format(
-                self.consumptive_use_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('irr_consumptive_use_sw [m3/month]: {}'.format(
-                self.consumptive_use_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-            print('irr_efficiency_gw [-]: {}'.format(
-                self.irrigation_efficiency_gw[self.lat_idx,
-                                              self.lon_idx]))
-
-            print('irr_abstraction_gw [m3/month]: {}'.format(
-                self.abstraction_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('irr_efficiency_sw [-]: {}'.format(
-                self.irrigation_efficiency_sw[self.lat_idx,
-                                              self.lon_idx]))
-
-            print('irr_abstraction_sw [m3/month]: {}'.format(
-                self.abstraction_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('irr_abstraction_tot [m3/month]: {}'.format(
-                self.abstraction_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-            print('irr_return_flow_tot [m3/month]: {}'.format(
-                self.return_flow_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('irr_fraction_return_gw [-]: {}'.format(
-                self.fraction_return_gw[self.lat_idx, self.lon_idx]))
-
-            print('irr_return_flow_gw [m3/month]: {}'.format(
-                self.return_flow_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('irr_return_flow_sw [m3/month]: {}'.format(
-                self.return_flow_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('irr_net_abstraction_gw [m3/month]: {}'.format(
-                self.net_abstraction_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('irr_net_abstraction_sw [m3/month]: {}'.format(
-                self.net_abstraction_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-
-if __name__ == "__main__":
-    from controller import input_data_manager as idm
-
-    preprocessed_gwswuse_data, _, _, _ = \
-        idm.input_data_manager(cm.input_data_path,
-                               cm.gwswuse_convention_path,
-                               cm.start_year,
-                               cm.end_year,
-                               cm.time_extend_mode
-                               )
-    irr = IrrigationSimulator(preprocessed_gwswuse_data['irrigation'])
+        csp.print_cell_value(
+            self.fraction_gw_use, 'fraction_gw_use', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_gw, 'consumptive_use_gw', self.coords_idx,
+            self.unit, self.csp_flag)
+        csp.print_cell_value(
+            self.consumptive_use_sw, 'consumptive_use_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.irrigation_efficiency_gw, 'irrigation_efficiency_gw',
+            self.coords_idx, flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_gw, 'abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.irrigation_efficiency_sw, 'irrigation_efficiency_sw',
+            self.coords_idx, flag=self.csp_flag)
+        csp.print_cell_value(
+            self.abstraction_sw, 'abstraction_sw', self.coords_idx, self.unit,
+            self.csp_flag)
+        csp.print_cell_value(
+            self.abstraction_tot, 'abstraction_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_tot, 'return_flow_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_return_gw, 'fraction_return_gw', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_gw, 'return_flow_gw', self.coords_idx, self.unit,
+            self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_sw, 'return_flow_sw', self.coords_idx, self.unit,
+            self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_gw, 'net_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_sw, 'net_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        print()

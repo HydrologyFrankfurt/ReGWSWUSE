@@ -8,12 +8,10 @@
 # You should have received a copy of the LGPLv3 License along with WaterGAP.
 # if not see <https://www.gnu.org/licenses/lgpl-3.0>
 # =============================================================================
-
-""" GWSWUSE total sectors simulation module."""
+"""GWSWUSE total sectors simulation module."""
 
 import os
-
-from controller import configuration_module as cm
+from misc import cell_simulation_printer as csp
 from model import model_equations as me
 
 # ===============================================================
@@ -77,7 +75,7 @@ class TotalSectorsSimulator():
         (input)
     """
 
-    def __init__(self, irr, dom, man, tp, liv):
+    def __init__(self, irr, dom, man, tp, liv, config):
         """
         Initialize the TotalSectorsSimulator with data from all sectors.
 
@@ -94,6 +92,15 @@ class TotalSectorsSimulator():
         liv : SectorData
             Livestock sector data.
         """
+        # Initialize relevant configuration settings
+        self.csp_flag = config.cell_specific_output['flag']
+
+        # Store unit & coords_idx from irrigationfor cell-specific output
+        self.unit = irr.unit
+        self.coords_idx = irr.coords_idx
+        # Store coords for generating netcdf-output
+        self.coords = irr.coords
+
         # Sum total consumptive use across all sectors
         self.consumptive_use_tot = \
             me.calculate_cross_sector_totals(irr.consumptive_use_tot,
@@ -178,81 +185,59 @@ class TotalSectorsSimulator():
                                    self.consumptive_use_tot,
                                    self.return_flow_gw,
                                    self.return_flow_tot)
-        # Store coords for generating netcdf-output
-        self.coords = irr.coords
-        if cm.cell_specific_output['Flag']:
-            print("Total specific values for lat: {lat}, lon: {lon}, "
-                  "year: {year}, month: {month}".format(
-                      lat=cm.cell_specific_output['coords']['lat'],
-                      lon=cm.cell_specific_output['coords']['lon'],
-                      year=cm.cell_specific_output['coords']['year'],
-                      month=cm.cell_specific_output['coords']['month']
-                  ))
-            self.time_idx = irr.time_idx
-            self.lat_idx = irr.lat_idx
-            self.lon_idx = irr.lon_idx
-
-            print('total_consumptive_use_tot [m3/month]: {}'.format(
-                self.consumptive_use_tot[self.time_idx,
-                                         self.lat_idx,
-                                         self.lon_idx]))
-
-            print('total_consumptive_use_gw [m3/month]: {}'.format(
-                self.consumptive_use_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('total_consumptive_use_sw [m3/month]: {}'.format(
-                self.consumptive_use_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('total_abstraction_tot [m3/month]: {}'.format(
-                self.abstraction_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('total_abstraction_gw [m3/month]: {}'.format(
-                self.abstraction_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('total_abstraction_sw [m3/month]: {}'.format(
-                self.abstraction_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('total_rf_tot [m3/month]: {}'.format(
-                self.return_flow_tot[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('total_rf_gw [m3/month]: {}'.format(
-                self.return_flow_gw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('total_rf_sw [m3/month]: {}'.format(
-                self.return_flow_sw[self.time_idx,
-                                    self.lat_idx,
-                                    self.lon_idx]))
-
-            print('total_net_abstraction_gw [m3/month]: {}'.format(
-                self.net_abstraction_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('total_net_abstraction_sw [m3/month]: {}'.format(
-                self.net_abstraction_sw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
-
-            print('total_fraction_gw_use [-]: {}'.format(
-                self.fraction_gw_use[self.time_idx,
-                                     self.lat_idx,
-                                     self.lon_idx]))
-
-            print('total_fraction_return_gw [-]: {} \n'.format(
-                self.fraction_return_gw[self.time_idx,
-                                        self.lat_idx,
-                                        self.lon_idx]))
+        # print headline for cell simulation prints
+        csp.print_cell_output_headline(
+            'total', config.cell_specific_output, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_tot, 'total_consumptive_use_tot',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_tot, 'total_abstraction_tot',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_gw_use, 'total_fraction_gw_use', self.coords_idx,
+            flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_gw, 'total_consumptive_use_gw',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.consumptive_use_sw, 'total_consumptive_use_sw',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_gw, 'total_abstraction_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.abstraction_sw, 'total_abstraction_sw', self.coords_idx,
+            self.unit, self.csp_flag)
+        csp.print_cell_value(
+            self.return_flow_tot, 'total_return_flow_tot', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.fraction_return_gw, 'total_fraction_return_gw',
+            self.coords_idx, flag=self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_gw, 'total_return_flow_gw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.return_flow_sw, 'total_return_flow_sw', self.coords_idx,
+            self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_gw, 'total_net_abstraction_gw',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        csp.print_cell_value(
+            self.net_abstraction_sw, 'total_net_abstraction_sw',
+            self.coords_idx, self.unit, self.csp_flag
+            )
+        print()
