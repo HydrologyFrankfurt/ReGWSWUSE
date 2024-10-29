@@ -62,6 +62,7 @@ def print_cell_output_headline(sector, cell_specific_option, flag):
             print(f"{sector} results for grid cell with lat: {lat}, "
                   f"lon: {lon},\n"
                   f"year: {year}")
+        print("-------------------------------------------------------------")
 
 
 def get_np_coords_cell_idx(xr_data, sector, cell_specific_option, flag):

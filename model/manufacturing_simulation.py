@@ -12,19 +12,19 @@
 
 import os
 import xarray as xr
-from model import model_equations as me
 from misc import cell_simulation_printer as csp
-
+from model import model_equations as me
 
 # ===============================================================
 # Get module name and remove the .py extension
 # Module name is passed to logger
 # # =============================================================
-modname = (os.path.basename(__file__))
+modname = os.path.basename(__file__)
 modname = modname.split('.')[0]
 
 
 class ManufacturingSimulator:
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle manufacturing water use simulations in the GWSWUSE model.
 

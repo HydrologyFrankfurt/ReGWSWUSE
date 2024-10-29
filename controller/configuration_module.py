@@ -30,10 +30,8 @@ modname = modname.split('.')[0]
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 args = cli.parse_cli()
 
-
 class ConfigError(Exception):
     """User-defined exception for configuration errors."""
-    pass
 
 
 class ConfigHandler:
@@ -83,14 +81,15 @@ class ConfigHandler:
             print('Configuration not found')
             log.config_logger(logging.ERROR, modname,
                               'Configuration file not found',
-                              self.debug)
+                              args.debug)
             sys.exit()  # don't run code if cofiguration file does not exist
         except json.JSONDecodeError as json_error:
             # Handle invalid JSON format
             log.config_logger(logging.ERROR, modname,
                               f'Error decoding JSON configuration file: '
                               f'{filename} - {str(json_error)}',
-                              self.debug)
+                              args.debug)
+            sys.exit()
         else:
             # If no exceptions occurred, configuration was loaded successfully
             print('\n' + 'Configuration loaded successfully' + '\n')

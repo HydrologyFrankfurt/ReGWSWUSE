@@ -13,7 +13,6 @@ GWSWUSE module with unit and data structure convert functions.
 """
 import os
 import numpy as np
-import pandas as pd
 
 # ===============================================================
 # Get module name and remove the .py extension

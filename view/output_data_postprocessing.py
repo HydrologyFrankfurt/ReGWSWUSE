@@ -19,10 +19,9 @@ import xarray as xr
 from termcolor import colored
 from colorama import init
 
+from misc import watergap_version
 from model import time_unit_conversion as tc
 from view import gwswuse_var_info as var_info
-from misc import watergap_version
-
 
 init()
 # =============================================================================
@@ -117,8 +116,8 @@ def set_variable_metadata_xr(sector, var):
 
     if sector == 'irrigation' and var in irrigation_specific_vars:
         return var_info.modelvars[var]
-    else:
-        return var_info.modelvars[var][sector]
+
+    return var_info.modelvars[var][sector]
 
 
 def set_dimension_attributes(xr_array, sector, start_year):

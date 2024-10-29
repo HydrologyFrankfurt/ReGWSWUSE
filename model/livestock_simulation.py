@@ -12,8 +12,8 @@
 
 import os
 import xarray as xr
-from model import model_equations as me
 from misc import cell_simulation_printer as csp
+from model import model_equations as me
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -24,6 +24,7 @@ modname = modname.split('.')[0]
 
 
 class LivestockSimulator:
+    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
 

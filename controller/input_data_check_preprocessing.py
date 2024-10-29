@@ -77,7 +77,8 @@ def check_dataset_structure_metadata(
     # Log if the variable has incorrect or missing units (if applicable)
     if variable in unit_vars:
         if 'units' in first_data_var.attrs:
-            if expected_units and first_data_var.attrs['units'] != expected_units:
+            if expected_units and first_data_var.attrs['units'] not in \
+                expected_units:
                 logs.setdefault("incorrect_units", []).append(log_id)
         else:
             logs.setdefault("missing_unit", []).append(log_id)
