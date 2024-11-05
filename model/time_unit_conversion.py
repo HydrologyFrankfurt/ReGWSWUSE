@@ -13,7 +13,6 @@ GWSWUSE module with unit and data structure convert functions.
 """
 import os
 import numpy as np
-import pandas as pd
 
 # ===============================================================
 # Get module name and remove the .py extension
@@ -89,50 +88,6 @@ def convert_monthly_to_yearly(monthly_m3_month_data):
             np.sum(monthly_m3_month_data[start_idx:end_idx], axis=0)
 
     return yearly_m3_year_data
-
-
-def get_time_step_in_array(array, start_year, end_year):
-    """
-    Determine the time step frequency in the given array.
-
-    This function calculates the time step frequency (monthly or yearly)
-    of the given array based on the number of time steps and the simulation
-    period from start_year to end_year. It raises a ValueError if the number
-    of time steps does not match the expected 'monthly' or 'yearly' data.
-
-    Parameters
-    ----------
-    array : numpy.ndarray
-        The input array where the first dimension represents time steps.
-    start_year : int
-        The start year of the simulation period.
-    end_year : int
-        The end year of the simulation period.
-
-    Returns
-    -------
-    tuple
-        A tuple containing the time step frequency ('monthly' or 'yearly')
-        and the number of simulation years.
-
-    Raises
-    ------
-    ValueError
-        If the number of time steps does not match the expected 'monthly'
-        or 'yearly' data.
-    """
-    sim_num_years = (end_year + 1) - start_year
-
-    num_of_time_steps = array.shape[0]
-    if num_of_time_steps/12 == sim_num_years:
-        time_step = 'monthly'
-    elif num_of_time_steps == sim_num_years:
-        time_step = 'yearly'
-    else:
-        raise ValueError("The number of time steps does not match the expected"
-                         "'monthly' or 'yearly' data.")
-
-    return time_step, sim_num_years
 
 
 def expand_array_size(annual_array):

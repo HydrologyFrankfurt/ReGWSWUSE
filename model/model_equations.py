@@ -357,6 +357,8 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
         rules set by the selected method.
 
     """
+    efficiency_gw = np.full_like(efficiency_sw, np.nan)
+
     if mode == "enforce":
         # Set all non-NaN values to the threshold, preserve NaNs
         efficiency_gw = np.where(np.isnan(efficiency_sw),
@@ -419,11 +421,11 @@ def calc_irr_abstraction_totgwsw(irr_consumptive_use_gw, irr_efficiency_gw,
 #            =======================================
 
 
-def calculate_cross_sector_totals(irr_monthly_m3_month,
-                                  dom_annual_m3_year,
-                                  man_annual_m3_year,
-                                  tp_annual_m3_year,
-                                  liv_annual_m3_year):
+def calc_cross_sector_totals(irr_monthly_m3_month,
+                             dom_annual_m3_year,
+                             man_annual_m3_year,
+                             tp_annual_m3_year,
+                             liv_annual_m3_year):
     """
     Sum the volume per time variable for multiple sectors.
 
@@ -474,8 +476,8 @@ def calculate_cross_sector_totals(irr_monthly_m3_month,
     return total_sectors_monthly_m3_month
 
 
-def calculate_fractions(consumptive_use_gw, consumptive_use_tot,
-                        return_flow_gw, return_flow_tot):
+def calc_total_fractions(consumptive_use_gw, consumptive_use_tot,
+                         return_flow_gw, return_flow_tot):
     """
     Calculate the fractions of groundwater use and return flow to groundwater.
 
@@ -509,10 +511,10 @@ def calculate_fractions(consumptive_use_gw, consumptive_use_tot,
 
     # Perform calculations only for valid elements
     fraction_gw_use[valid_consumptive_use_tot] = \
-        consumptive_use_gw[valid_consumptive_use_tot] / \
-        consumptive_use_tot[valid_consumptive_use_tot]
+        (consumptive_use_gw[valid_consumptive_use_tot] /
+         consumptive_use_tot[valid_consumptive_use_tot])
     fraction_return_to_gw[valid_return_flow_tot] = \
-        return_flow_gw[valid_return_flow_tot] / \
-        return_flow_tot[valid_return_flow_tot]
+        (return_flow_gw[valid_return_flow_tot] /
+         return_flow_tot[valid_return_flow_tot])
 
     return fraction_gw_use, fraction_return_to_gw

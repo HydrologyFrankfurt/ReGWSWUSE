@@ -42,7 +42,6 @@ def run_gwswuse():
                                config.convention_path,
                                config.start_year,
                                config.end_year,
-                               config.correct_irrigation_t_aai_mode,
                                config.time_extend_mode
                                )
     print("GWSWUSE simulation starts from "

@@ -49,7 +49,7 @@ def load_conventions(convention_path):
         Dictionary of conventions loaded from the JSON file.
     """
     try:
-        with open(convention_path, 'r') as convention_file:
+        with open(convention_path, encoding="utf-8") as convention_file:
             conventions = json.load(convention_file)
     except FileNotFoundError:
         print("Input data convention file not found.")  # Logging
@@ -124,7 +124,6 @@ def input_data_manager(input_data_path,
                        convention_path,
                        start_year,
                        end_year,
-                       correct_irr_t_aai_mode,
                        time_extend_mode):
     """
     Manage the loading, checking and pre-processing of input data.
@@ -186,20 +185,3 @@ def input_data_manager(input_data_path,
     print('Input data check and preprocessing completed.\n')
 
     return preprocessed_data, check_results, datasets, conventions
-
-
-if __name__ == "__main__":
-    from controller import configuration_module as cm
-
-    (preprocessed_gwswuse_data,
-     gwswuse_check_results,
-     input_datasets,
-     gwswuse_conventions
-     ) = \
-        input_data_manager(cm.input_data_path,
-                           cm.gwswuse_convention_path,
-                           cm.start_year,
-                           cm.end_year,
-                           cm.correct_irr_t_aai_mode,
-                           cm.time_extend_mode
-                           )

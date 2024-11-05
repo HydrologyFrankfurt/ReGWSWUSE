@@ -34,7 +34,7 @@ def parse_cli():
 
     # optional argument for name of configuration file
     default_path = "./"
-    default_version = "gwswuse_wgap_2_2d_1901_1905/"
+    # default_version = "gwswuse_wgap_2_2d_1901_1905/"
     default_config = \
         (default_path +
          "gwswuse_config.json")

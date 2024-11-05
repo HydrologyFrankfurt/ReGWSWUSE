@@ -615,8 +615,9 @@ modelvars = {
     }
 
 
-def print_modelvars(modelvars):
-    for var_name, var_data in modelvars.items():
+def print_modelvars(model_vars):
+    """Print dictionairy of gwswuse variables."""
+    for var_name, var_data in model_vars.items():
         print(f"Variable: {var_name}")
         if isinstance(var_data, dict):
             # Check if sub-items are dictionaries or direct attributes

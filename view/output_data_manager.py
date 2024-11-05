@@ -260,12 +260,3 @@ def output_data_manager(gwswuse_results,
     save_datasets_to_netcdf(output_dir, output_xr_data)
     print(f"\nOutput data saved to output folder {output_dir}")
     return output_xr_data
-
-
-if __name__ == "__main__":
-    from controller import configuration_module as cm
-    output_data_manager(gwswuse_results,
-                        cm.output_selection,
-                        cm.output_dir,
-                        cm.start_year,
-                        cm.end_year)

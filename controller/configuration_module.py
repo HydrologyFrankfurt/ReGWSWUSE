@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import sys
+from datetime import datetime
 import watergap_logger as log
 from misc import cli_args as cli
 
@@ -30,10 +31,8 @@ modname = modname.split('.')[0]
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 args = cli.parse_cli()
 
-
 class ConfigError(Exception):
     """User-defined exception for configuration errors."""
-    pass
 
 
 class ConfigHandler:
@@ -55,6 +54,7 @@ class ConfigHandler:
             cls._instance._initialize_config()
             # Validate the configuration after loading and initializing
             cls._instance._validate_config()
+            cls._instance.save_config()
         return cls._instance
 
     def _load_config(self, config_filename):
@@ -83,14 +83,15 @@ class ConfigHandler:
             print('Configuration not found')
             log.config_logger(logging.ERROR, modname,
                               'Configuration file not found',
-                              self.debug)
+                              args.debug)
             sys.exit()  # don't run code if cofiguration file does not exist
         except json.JSONDecodeError as json_error:
             # Handle invalid JSON format
             log.config_logger(logging.ERROR, modname,
                               f'Error decoding JSON configuration file: '
                               f'{filename} - {str(json_error)}',
-                              self.debug)
+                              args.debug)
+            sys.exit()
         else:
             # If no exceptions occurred, configuration was loaded successfully
             print('\n' + 'Configuration loaded successfully' + '\n')
@@ -335,3 +336,11 @@ class ConfigHandler:
         self._load_config(self.config_filename)
         self._initialize_config()
         self._validate_config()
+
+    def save_config(self):
+        """Save configuration in output_path json file"""
+        current_date = datetime.now().strftime("%Y_%m_%d")
+        config_output_name = \
+            self.output_dir + "config_" + current_date + ".json"
+        with open(config_output_name, "w") as json_file:
+            json.dump(self.config_data, json_file, indent=4)
