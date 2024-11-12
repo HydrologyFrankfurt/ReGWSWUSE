@@ -627,11 +627,12 @@ def print_modelvars(model_vars):
                     for attr_key, attr_value in sub_value.items():
                         print(f"    {attr_key}: {attr_value}")
                 else:
-                    # Handle case where there are no sectors (direct attributes)
+                    # Handle case where there are no sectors
                     print(f"  {sub_key}: {sub_value}")
         else:
             print(f"  Value: {var_data}")
         print()  # Newline for better separation between variables
+
 
 if __name__ == "__main__":
     print_modelvars(modelvars)

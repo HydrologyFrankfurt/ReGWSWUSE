@@ -19,11 +19,13 @@ import xarray as xr
 from termcolor import colored
 from colorama import init
 
+from gwswuse_logger import get_logger
 from misc import watergap_version
 from model import time_unit_conversion as tc
 from view import gwswuse_var_info as var_info
 
 init()
+logger = get_logger(__name__)
 # =============================================================================
 # FUNCTIONS TO CREATE XR DATATSET FOR OUTPUT IN NETCDF FORMAT
 # =============================================================================
@@ -57,25 +59,29 @@ def write_to_xr_dataarray(result_np, coords, var_name, sector):
     special_vars = ['irrigation_efficiency_gw',
                     'irrigation_efficiency_sw',
                     'deficit_irrigation_location']
+    try:
+        if var_name in special_vars:
+            # select only 'lat' & 'lon' as coordinates
+            coords = {key: coords[key] for key in ['lat', 'lon']}
+            result_xr = xr.Dataset(coords=coords)
+        else:
+            result_xr = xr.Dataset(coords=coords)
+            result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
 
-    if var_name in special_vars:
-        # select only 'lat' & 'lon' as coordinates
-        coords = {key: coords[key] for key in ['lat', 'lon']}
-        result_xr = xr.Dataset(coords=coords)
-    else:
-        result_xr = xr.Dataset(coords=coords)
-        result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
+        variable_metadata = set_variable_metadata_xr(sector, var_name)
+        xr_var_name = variable_metadata['standard_name']
+        del variable_metadata['standard_name']
 
-    variable_metadata = set_variable_metadata_xr(sector, var_name)
-    xr_var_name = variable_metadata['standard_name']
-    del variable_metadata['standard_name']
+        result_xr[xr_var_name] = \
+            xr.DataArray(result_np, coords=coords)
+        result_xr[xr_var_name].attrs = variable_metadata
 
-    result_xr[xr_var_name] = \
-        xr.DataArray(result_np, coords=coords)
-    result_xr[xr_var_name].attrs = variable_metadata
-
-    result_xr.attrs = set_global_metadata()
-
+        result_xr.attrs = set_global_metadata()
+        logger.debug(f"xr.DataArray with metadata created successfully for: "
+                     f"{sector}/{var_name}.")
+    except Exception as e:
+        logger.error(
+            f"Failed to create xarray.DataArray for {sector}/{var_name}: {e}")
     return result_xr
 
 # =============================================================================
@@ -86,7 +92,7 @@ def write_to_xr_dataarray(result_np, coords, var_name, sector):
 # =============================================================================
 
 
-def set_variable_metadata_xr(sector, var):
+def set_variable_metadata_xr(sector, var_name):
     """
     Retrieve sector-specific metadata for a given variable.
 
@@ -97,7 +103,7 @@ def set_variable_metadata_xr(sector, var):
     ----------
     sector : str
         The sector for which to retrieve metadata (e.g., 'irrigation').
-    var : str
+    var_name : str
         The variable for which to retrieve metadata (e.g.,
         'consumptive_use_tot').
 
@@ -114,10 +120,15 @@ def set_variable_metadata_xr(sector, var):
                                 'fraction_aai_aei',
                                 'time_factor_aai']
 
-    if sector == 'irrigation' and var in irrigation_specific_vars:
-        return var_info.modelvars[var]
+    try:
+        if sector == 'irrigation' and var_name in irrigation_specific_vars:
+            return var_info.modelvars[var_name]
+        metadata = var_info.modelvars[var_name][sector]
+        return metadata
 
-    return var_info.modelvars[var][sector]
+    except KeyError as e:
+        logger.error(f"Metadata for{sector}/{var_name} not found: {e}")
+        raise
 
 
 def set_dimension_attributes(xr_array, sector, start_year):
@@ -190,17 +201,21 @@ def set_global_metadata():
     dictionary
         The dictionary with updated global metadata.
     """
-    global_metadata = {
-        'title': (
-            "WaterGAP"+" "+watergap_version.__version__ + ' model ouptput'
+    try:
+        global_metadata = {
+            'title': (
+                "WaterGAP " + watergap_version.__version__ + " model output"
             ),
-        'institution': watergap_version.__institution__,
-        'contact': "contact@hydrology.uni-frankfurt.de",
-        'model_version':  "WaterGAP"+" "+watergap_version.__version__,
-        "reference": watergap_version.__reference__,
-        'Creation_date':
-            dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'institution': watergap_version.__institution__,
+            'contact': "contact@hydrology.uni-frankfurt.de",
+            'model_version':  "WaterGAP" + " " + watergap_version.__version__,
+            'reference': watergap_version.__reference__,
+            'Creation_date': dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
+    except AttributeError:
+        logger.error("Error setting global metadata:\n"
+                     "missing attribute in watergap_version.")
+        raise
     return global_metadata
 
 
@@ -305,6 +320,8 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
          Dictionary of dataframes, where keys are variable names and values are
          dataframes with global annual totals.
     """
+    # Start log for function entry
+    logger.info("Starting calculation of global annual totals.")
     # Define the range of years for the simulation period
     year_range = range(start_year, end_year + 1)
 
@@ -321,12 +338,14 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
     # List sectors with monthly time resolution
     monthly_sectors = ['irrigation', 'total']
 
-    print('\n' + colored(f'Global Totals for year {start_year}', 'cyan'))
+    # Initialize a string to store the log output
+    log_output = colored(f"\nGlobal Totals for year {start_year}\n", 'cyan')
+
     # Iterate over each variable in the list
     for var_name in global_annual_totals_vars:
         # Create an empty dataframe to store annual totals for each sector
         var_df = pd.DataFrame(index=year_range)
-
+        logger.debug(f"Calculate global annual totals for {var_name}.")
         # Iterate over each sector in the sectors_dict
         for sector in sectors_dict.keys():
             # Get the array of values for the current variable and sector
@@ -346,11 +365,18 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
 
             # Add the annual totals for the current sector to the dataframe
             var_df[sector] = annual_totals
-        print('\n' + colored(f'{var_name}:', 'yellow'))
+
+        # Add the current variable's results to the log output string
+        log_output += colored(f"\n{var_name}:\n", 'yellow')
         for sector, var_value in var_df.iloc[0, :].items():
-            print(f"{sector}: {var_value} km3/year")
+            log_output += f"{sector}: {var_value} km3/year\n"
 
         # Add the dataframe for the current variable to the global_annuals_dict
         global_annuals_dict[var_name] = var_df
+
+    # End log for function exit
+    logger.info("Completed calculation of global annual totals.")
+    # Log the entire output at once
+    logger.info(log_output)
 
     return global_annuals_dict

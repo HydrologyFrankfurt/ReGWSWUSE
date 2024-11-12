@@ -1,80 +1,116 @@
 # -*- coding: utf-8 -*-
-"""Logger Function."""
+# =============================================================================
+# This file is part of WaterGAP.
+
+# WaterGAP is an opensource software which computes water flows and storages as
+# well as water withdrawals and consumptive uses on all continents.
+
+# You should have received a copy of the LGPLv3 License along with WaterGAP.
+# if not see <https://www.gnu.org/licenses/lgpl-3.0>
+# =============================================================================
+"""GWSWUSE logging module."""
+
+import os
 import logging
-import datetime
+import logging.config
 
 
-# ===============================================================
-# Setting up logger
-# ===============================================================
-
-
-def config_logger(level, modname, msg, debug=False):
+def setup_logger(debug=False):
     """
-    Set logger.
+    Set up logging configuration for the application.
+
+    This function configures the logging settings for the application,
+    including formatters, handlers, and log levels. The configuration
+    includes both console output and file logging with a rotating file
+    handler.
+
+    The log levels are set as follows:
+    - Console: INFO and above (default) or DEBUG if specified
+    - File: DEBUG and above (detailed information is saved to a file)
 
     Parameters
     ----------
-    modname : str
-        Module name
-    level : logging level
-        Set level as e.g. logging.DEBUG.
-        Prefix of  level should always be
-        'logging.(level name)'
-    debug : bool(True or False)
-        Optional argument to enable or disable traceback for debugging
+    debug : bool, optional
+        If True, sets the console log level to DEBUG instead of INFO.
+    """
+    class CustomFormatter(logging.Formatter):
+        def format(self, record):
+            # Define different formats for different log levels
+            if record.levelno in (logging.DEBUG, logging.WARNING,
+                                  logging.ERROR, logging.CRITICAL):
+                self._style._fmt = '%(levelname)s - %(message)s'
+            else:
+                self._style._fmt = '%(message)s'
+            return super().format(record)
+    # Ensure the logs directory exists
+    os.makedirs('./logs', exist_ok=True)
+    logging_config = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'detailed': {
+                'format': '%(asctime)s - %(name)s - %(levelname)s - '
+                          '%(message)s'
+            },
+            'simple': {
+                'format': '%(levelname)s - %(message)s'
+            },
+            'custom': {
+                # Use the custom formatter for stream handler
+                '()': CustomFormatter,
+                # Default format (used for INFO level)
+                'format': '%(message)s'
+            },
+        },
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                # Set to DEBUG if debug is True
+                'level': 'DEBUG' if debug else 'INFO',
+                'formatter': 'custom',
+                'stream': 'ext://sys.stdout',  # Output to console (stdout)
+            },
+            'file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'level': 'DEBUG',  # DEBUG and above will be saved to file
+                'formatter': 'detailed',
+                'filename': './logs/simulation.log',
+                'maxBytes': 10485760,  # 10 MB per log file
+                'backupCount': 3,  # Keep up to 3 backup log files
+                'mode': 'a',  # Append to the existing log file
+            },
+        },
+        'root': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'file']
+        },
+    }
+
+    # Apply the logging configuration
+    logging.config.dictConfig(logging_config)
+
+
+def get_logger(name):
+    """
+    Retrieve a configured logger by name.
+
+    This function returns a logger with the specified name. The logger
+    follows the configuration defined in `setup_logger`, ensuring that
+    all logging follows a consistent format and destination.
+
+    Parameters
+    ----------
+    name : str
+        The name of the logger to be retrieved.
 
     Returns
     -------
-    logger :
-        returns logging information.
-
+    logging.Logger
+        The configured logger instance.
     """
-    # assign True or False to debug
-    logdate = datetime.datetime.now()
-    logdate = logdate.strftime("%Y-%m-%d-%H-%M-%S")
-    logger = logging.getLogger(modname)
+    return logging.getLogger(name)
 
-    # Checking for existing logging handlers else multiple log statement will
-    # be printed to the same log file
-    formatter = logging.Formatter('%(asctime)s:%(name)s:%(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
-    file_handler = logging.FileHandler(modname+'_'+logdate+".log")
-    file_handler.setFormatter(formatter)
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
-    # exc_info produes full traceback of error
-    if level == logging.ERROR:
-        logger.setLevel(level)
-        logger.error(msg, exc_info=debug)
-        file_handler.close()  # close log after writing
-        logger.handlers.clear()
-    elif level == logging.CRITICAL:
-        logger.setLevel(level)
-        logger.critical(msg, exc_info=debug)
-        file_handler.close()
-        logger.handlers.clear()
-    elif level == logging.WARNING:
-        logger.setLevel(level)
-        logger.warning(msg, exc_info=False)
-        file_handler.close()
-        logger.handlers.clear()
-    elif level == logging.INFO:
-        logger.setLevel(level)
-        logger.info(msg, exc_info=False)
-        file_handler.close()
-        logger.handlers.clear()
-    elif level == logging.DEBUG:
-        logger.setLevel(level)
-        logger.debug(msg, exc_info=debug)
-        file_handler.close()
-        logger.handlers.clear()
-    else:
-        raise ValueError('Wrong logging level. Please enter a correct'
-                         ' level. Should be words or numeric. see '
-                         'https://docs.python.org/'
-                         '3/library/logging.html#levels')
-
-    return logger
+# Example usage:
+# setup_logger(debug=True)
+# logger = get_logger(__name__)
+# logger.info("This is an informational message.")

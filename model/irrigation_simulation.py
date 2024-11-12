@@ -10,18 +10,12 @@
 # =============================================================================
 """GWSWUSE irrigation simulation module."""
 
-import os
 import xarray as xr
-from misc import cell_simulation_printer as csp
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
-
+logger = get_logger(__name__)
 
 class IrrigationSimulator:
     """
@@ -113,6 +107,7 @@ class IrrigationSimulator:
             Dictionary containing xarray.DataArrays for various irrigation
             variables.
         """
+        self.sector_name = 'irrigation'
         # Initialize configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -137,30 +132,44 @@ class IrrigationSimulator:
              if 'fraction_gw_use' in irr_data and
              isinstance(irr_data['fraction_gw_use'], xr.DataArray)
              else 0)
+        if isinstance(self.fraction_gw_use, int) and self.fraction_gw_use == 0:
+            logger.info(
+                f"fraction_gw_use for {self.sector_name} is set to 0 by "
+                "default. Differs from WaterGAP 2.2e"
+                )
         # Set fraction of groundwater return, default to 0 if not provided
         self.fraction_return_gw = \
             (irr_data['fraction_return_gw'].values
              if 'fraction_return_gw' in irr_data and
              isinstance(irr_data['fraction_return_gw'], xr.DataArray)
              else 0)
+        if (isinstance(self.fraction_return_gw, int) and 
+            self.fraction_return_gw == 0):
+            logger.info(
+                f"fraction_return_gw for {self.sector_name} is set to 0 by "
+                "default. Differs from WaterGAP 2.2e"
+                )
 
-        # Set groundwater depletion mask
-        self.gwd_mask = irr_data['gwd_mask'].values
+        if self.deficit_irrigation_mode:
+            # Set groundwater depletion mask
+            self.gwd_mask = irr_data['gwd_mask'].values
+    
+            # Set abstraction irrigation part mask
+            self.abstraction_irr_part_mask = \
+                irr_data['abstraction_irr_part_mask'].values
+    
+            # Determine deficit irrigation locations
+            self.deficit_irrigation_location = me.set_irr_deficit_locations(
+                self.gwd_mask, self.abstraction_irr_part_mask,
+                self.deficit_irrigation_factor)
 
-        # Set abstraction irrigation part mask
-        self.abstraction_irr_part_mask = \
-            irr_data['abstraction_irr_part_mask'].values
+        if self.irrigation_input_based_on_aei:
+            # Set fraction_aai_aei
+            self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
 
-        # Determine deficit irrigation locations
-        self.deficit_irrigation_location = \
-            me.set_irr_deficit_locations(self.gwd_mask,
-                                         self.abstraction_irr_part_mask,
-                                         self.deficit_irrigation_factor)
-
-        # Set fraction_aai_aei
-        self.fraction_aai_aei = irr_data['fraction_aai_aei'].values
-        # Set time factor
-        self.time_factor_aai = irr_data['time_factor_aai'].values
+        if self.correct_irrigation_t_aai_mode:
+            # Set time factor
+            self.time_factor_aai = irr_data['time_factor_aai'].values
 
         # Set surface water efficiency
         self.irrigation_efficiency_sw = \
@@ -176,22 +185,28 @@ class IrrigationSimulator:
         self.coords = irr_data['consumptive_use_tot'].coords
 
         # print headline for cell simulation prints
-        csp.print_cell_output_headline(
-            'irrigation', config.cell_specific_output, self.csp_flag
+        ut.print_cell_output_headline(
+            self.sector_name, config.cell_specific_output, self.csp_flag
             )
         # get idx for coords for cell specific output
-        self.coords_idx = csp.get_np_coords_cell_idx(
+        self.coords_idx = ut.get_np_coords_cell_idx(
             irr_data['consumptive_use_tot'], 'irrigation',
             config.cell_specific_output, self.csp_flag
             )
         # Run the irrigation simulation
         self.simulate_irrigation()
 
-        # print("\nIrrigation simulation was performed. \n ")
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                 self.net_abstraction_gw,
+                                 self.net_abstraction_sw,
+                                 self.sector_name
+                                 )
+
+        logger.info("\nIrrigation simulation is completed.\n")
 
     def simulate_irrigation(self):
         """Run irrigation simulation with provided data and model equations."""
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'consumptive_use_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
@@ -203,11 +218,11 @@ class IrrigationSimulator:
                     self.consumptive_use_tot,
                     self.fraction_aai_aei
                     )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.fraction_aai_aei, 'fraction_aai_aei', self.coords_idx,
                 flag=self.csp_flag
                 )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.consumptive_use_tot, 'consumptive_use_tot corrected by '
                 'fraction_aai_aei', self.coords_idx, self.unit, self.csp_flag
                 )
@@ -219,20 +234,20 @@ class IrrigationSimulator:
                     self.consumptive_use_tot,
                     self.deficit_irrigation_location
                     )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.gwd_mask, 'gwd_mask', self.coords_idx, 'bool',
                 self.csp_flag
                 )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.abstraction_irr_part_mask, 'abstraction_irr_part_mask',
                 self.coords_idx, 'bool', self.csp_flag
                 )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.deficit_irrigation_location,
                 'deficit_irrigation_location_factor',
                 self.coords_idx, flag=self.csp_flag
                 )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.consumptive_use_tot, 'consumptive_use_tot_deficit',
                 self.coords_idx, self.unit, self.csp_flag
                 )
@@ -243,11 +258,11 @@ class IrrigationSimulator:
                 me.correct_irr_consumptive_use_by_t_aai(
                     self.consumptive_use_tot, self.time_factor_aai
                     )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.time_factor_aai, 'time_factor_aai', self.coords_idx,
                 flag=self.csp_flag
                 )
-            csp.print_cell_value(
+            ut.print_cell_value(
                 self.consumptive_use_tot,
                 'consumptive_use_tot corrected by time_factor_aai',
                 self.coords_idx, self.unit, self.csp_flag
@@ -280,57 +295,56 @@ class IrrigationSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'consumptive_use_gw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'consumptive_use_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.irrigation_efficiency_gw, 'irrigation_efficiency_gw',
             self.coords_idx, flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.irrigation_efficiency_sw, 'irrigation_efficiency_sw',
             self.coords_idx, flag=self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'abstraction_sw', self.coords_idx, self.unit,
             self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'abstraction_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'fraction_return_gw', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'return_flow_gw', self.coords_idx, self.unit,
             self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'return_flow_sw', self.coords_idx, self.unit,
             self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'net_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'net_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        print()

@@ -10,21 +10,14 @@
 # =============================================================================
 """GWSWUSE manufacturing simulation module."""
 
-import os
 import xarray as xr
-from misc import cell_simulation_printer as csp
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
-
+logger = get_logger(__name__)
 
 class ManufacturingSimulator:
-    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle manufacturing water use simulations in the GWSWUSE model.
 
@@ -93,6 +86,7 @@ class ManufacturingSimulator:
             Dictionary containing xarray.DataArrays for various manufacturing
             variables.
         """
+        self.sector_name = 'manufacturing'
         # Initialize relevant configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -120,11 +114,11 @@ class ManufacturingSimulator:
         # Store the coordinates for later use
         self.coords = man_data['consumptive_use_tot'].coords
         # print headline for cell simulation prints
-        csp.print_cell_output_headline(
-            'manufacturing', config.cell_specific_output, self.csp_flag
+        ut.print_cell_output_headline(
+            self.sector_name, config.cell_specific_output, self.csp_flag
             )
         # get idx for coords for cell specific output
-        self.coords_idx = csp.get_np_coords_cell_idx(
+        self.coords_idx = ut.get_np_coords_cell_idx(
             man_data['consumptive_use_tot'], 'manufacturing',
             config.cell_specific_output, self.csp_flag
             )
@@ -132,7 +126,14 @@ class ManufacturingSimulator:
         # Run the irrigation simulation
         self.simulate_manufacturing()
 
-        # print("Manufacturing simulation was performed. \n")
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                 self.net_abstraction_gw,
+                                 self.net_abstraction_sw,
+                                 self.sector_name
+                                 )
+
+        logger.info(
+            "\nManufacturing simulation is completed\n")
 
     def simulate_manufacturing(self):
         """Run manufacturing simulation with provided data."""
@@ -159,55 +160,54 @@ class ManufacturingSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'man_consumptive_use_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'man_abstraction_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'man_fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'man_consumptive_use_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'man_consumptive_use_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'man_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'man_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'man_return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'man_fraction_return_gw', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'man_return_flow_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'man_return_flow_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'man_net_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'man_net_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        print()

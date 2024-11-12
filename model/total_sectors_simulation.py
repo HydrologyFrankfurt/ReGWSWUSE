@@ -10,23 +10,12 @@
 # =============================================================================
 """GWSWUSE total sectors simulation module."""
 
-import os
-from misc import cell_simulation_printer as csp
+
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
-
-# pylint: disable=too-many-public-methods
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-arguments
-# pylint: disable=too-many-positional-arguments
-# pylint: disable=too-few-public-methods
-
+logger = get_logger(__name__)
 
 class TotalSectorsSimulator():
     """
@@ -97,6 +86,7 @@ class TotalSectorsSimulator():
         liv : SectorData
             Livestock sector data.
         """
+        self.name = 'cross-sector totals'
         # Initialize relevant configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -108,6 +98,13 @@ class TotalSectorsSimulator():
 
         # Sum total consumptive use across all sectors
         self.aggregate_cross_sector_totals(irr, dom, man, tp, liv, config)
+        
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                 self.net_abstraction_gw,
+                                 self.net_abstraction_sw,
+                                 self.name
+                                 )
+        logger.info("\nCross-sector totals aggregation is completed\n")
 
     def aggregate_cross_sector_totals(self, irr, dom, man, tp, liv, config):
         """Aggregate cross sector totals results."""
@@ -195,60 +192,58 @@ class TotalSectorsSimulator():
                                    self.consumptive_use_tot,
                                    self.return_flow_gw,
                                    self.return_flow_tot)
-
-        # print headline for cell simulation prints
-        csp.print_cell_output_headline(
+        # Log cell specific results
+        ut.print_cell_output_headline(
             'total', config.cell_specific_output, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'total_consumptive_use_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'total_abstraction_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'total_fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'total_consumptive_use_gw',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'total_consumptive_use_sw',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'total_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'total_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'total_return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'total_fraction_return_gw',
             self.coords_idx, flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'total_return_flow_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'total_return_flow_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'total_net_abstraction_gw',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'total_net_abstraction_sw',
             self.coords_idx, self.unit, self.csp_flag
             )
-        print()
