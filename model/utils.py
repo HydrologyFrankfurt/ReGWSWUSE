@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 def print_cell_output_headline(sector, cell_specific_option, flag):
     """
-    Print information about the selected cell's coords based on sector type.
+    Log information about the selected cell's coords based on sector type.
 
     Parameters
     ----------
@@ -38,13 +38,13 @@ def print_cell_output_headline(sector, cell_specific_option, flag):
             }
         }
     flag : bool
-        If True, the function prints the coordinates information; if False,
-        the function does not print anything.
+        If True, the function logs the coordinates information; if False,
+        the function does not log anything.
 
     Returns
     -------
     None
-        This function only prints the information.
+        This function only logs the information.
     """
     if flag:
         coords = cell_specific_option['coords']
@@ -141,15 +141,15 @@ def get_np_coords_cell_idx(xr_data, sector, cell_specific_option, flag):
 
 def print_cell_value(var, var_name, coords_idx=None, unit="-", flag=False):
     """
-    Print the value of the variable for specific cell indices.
+    Log value of the variable for specific cell indices.
 
     Parameters
     ----------
     var : numpy.ndarray, float, or int
-        The variable whose value you want to print. It can be a 1D, 2D, 3D
+        The variable whose value you want to log. It can be a 1D, 2D, 3D
         array or a scalar (float/int).
     var_name : str
-        The name of the variable as a string, which will be printed alongside
+        The name of the variable as a string, which will be loged alongside
         the value.
     coords_idx : tuple or list, optional
         A tuple or list containing the indices (time_idx, lat_idx, lon_idx) for
@@ -159,9 +159,9 @@ def print_cell_value(var, var_name, coords_idx=None, unit="-", flag=False):
         - For 2D arrays: (lat_idx, lon_idx)
     unit : str, optional
         The unit of the variable (default is "-"). This will be appended to the
-        printed value.
+        logged value.
     flag : bool, optional
-        If True, the function will print the value. If False, the function will
+        If True, the function will log the value. If False, the function will
         do nothing. Default is False.
     """
     if flag:
@@ -213,7 +213,7 @@ def test_net_abstraction_tot(
     Returns
     -------
     None
-        Prints test results and warnings to the console.
+        Logs test results and warnings to the console.
     """
     # Calculate net_abstraction_tot
     net_abstraction_tot = net_abstraction_gw + net_abstraction_sw

@@ -17,6 +17,7 @@ from model import utils as ut
 
 logger = get_logger(__name__)
 
+
 class ThermalPowerSimulator:
     """
     Class to handle thermal power water use simulations in the GWSWUSE model.
@@ -127,13 +128,10 @@ class ThermalPowerSimulator:
         self.simulate_thermal_power()
 
         ut.test_net_abstraction_tot(self.consumptive_use_tot,
-                                 self.net_abstraction_gw,
-                                 self.net_abstraction_sw,
-                                 self.sector_name
-                                 )
-
-        logger.info(
-            "\nThermal power simulation is completed\n")
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_thermal_power(self):
         """Run thermal power simulation with provided data."""

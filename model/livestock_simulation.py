@@ -17,6 +17,7 @@ from model import utils as ut
 
 logger = get_logger(__name__)
 
+
 class LivestockSimulator:
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
@@ -130,12 +131,10 @@ class LivestockSimulator:
         self.simulate_livestock()
 
         ut.test_net_abstraction_tot(self.consumptive_use_tot,
-                                 self.net_abstraction_gw,
-                                 self.net_abstraction_sw,
-                                 self.sector_name
-                                 )
-
-        logger.info("\nLivestock simulation is completed\n")
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_livestock(self):
         """Run livestock simulation with provided data and model equations."""

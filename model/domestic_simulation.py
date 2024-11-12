@@ -10,13 +10,13 @@
 # =============================================================================
 """GWSWUSE domestic simulation module."""
 
-import os
 import xarray as xr
 from gwswuse_logger import get_logger
 from model import model_equations as me
 from model import utils as ut
 
 logger = get_logger(__name__)
+
 
 class DomesticSimulator:
     """
@@ -125,12 +125,10 @@ class DomesticSimulator:
         self.simulate_domestic()
 
         ut.test_net_abstraction_tot(self.consumptive_use_tot,
-                                 self.net_abstraction_gw,
-                                 self.net_abstraction_sw,
-                                 self.sector_name
-                                 )
-
-        logger.info("\nDomestic simulation is completed\n")
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_domestic(self):
         """Run domestic simulation with provided data and model equations."""

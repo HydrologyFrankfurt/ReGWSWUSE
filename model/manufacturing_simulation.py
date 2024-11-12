@@ -17,6 +17,7 @@ from model import utils as ut
 
 logger = get_logger(__name__)
 
+
 class ManufacturingSimulator:
     """
     Class to handle manufacturing water use simulations in the GWSWUSE model.
@@ -127,13 +128,10 @@ class ManufacturingSimulator:
         self.simulate_manufacturing()
 
         ut.test_net_abstraction_tot(self.consumptive_use_tot,
-                                 self.net_abstraction_gw,
-                                 self.net_abstraction_sw,
-                                 self.sector_name
-                                 )
-
-        logger.info(
-            "\nManufacturing simulation is completed\n")
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_manufacturing(self):
         """Run manufacturing simulation with provided data."""

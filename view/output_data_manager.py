@@ -24,6 +24,57 @@ from view import output_data_postprocessing as odp
 logger = get_logger(__name__)
 
 # ===============================================================
+# OUTPUT DATA MANAGER MAIN FUNCTION
+# ===============================================================
+
+
+def output_data_manager(gwswuse_results,
+                        output_selection,
+                        output_dir,
+                        start_year,
+                        end_year):
+    """
+    Manage the output data process.
+
+    Parameters
+    ----------
+    gwswuse_results : dict
+        The results from the groundwater and surface water use simulation.
+    output_selection : dict
+        The user-defined selection of outputs to be processed.
+    output_dir : str
+        The directory where the output files will be saved.
+    start_year : int
+        The start year of the simulation period.
+    end_year : int
+        The end year of the simulation period.
+    """
+    # initialize output selection
+    (output_sector_sel, output_vars_sel, wghm_input_flag,
+     global_annual_total_flag) = \
+        initialize_output_selection(output_selection)
+
+    # Global annual totals creation
+    if global_annual_total_flag:
+        logger.debug("Starting calculation of global annual totals.")
+        df_global_annual_totals = \
+            odp.sum_global_annual_totals(gwswuse_results, start_year, end_year)
+        # End log for function exit
+        logger.debug("Calculation of global annual totals completed.")
+
+        save_global_annual_totals_to_excel(output_dir, df_global_annual_totals)
+
+    # Prepare and save selected variables as NetCDF files
+    output_xr_data = get_selected_var_results_as_xr(gwswuse_results,
+                                                    output_sector_sel,
+                                                    output_vars_sel,
+                                                    wghm_input_flag)
+    save_datasets_to_netcdf(output_dir, output_xr_data)
+
+    logger.info(f"Output data saved in:\n{output_dir}")
+
+    return output_xr_data
+# ===============================================================
 # OUTPUT DATA MANAGER SUB FUNCTION
 # ===============================================================
 
@@ -51,7 +102,7 @@ def initialize_output_selection(output_selection):
         Flag indicating whether to calculate and save global annual totals.
 
     """
-    logger.info("Initialize output selection.")
+    logger.debug("Initialize output selection.")
     output_sector_sel = \
         [sector_name
          for sector_name, is_enabled in output_selection['Sectors'].items()
@@ -121,8 +172,8 @@ def get_selected_var_results_as_xr(results_dict,
                 var_name = sector_name + '_' + var_name
                 output_xr_data[var_name] = var_xr_result
                 logger.debug(
-                    f"Variable {sector_name}_{var_name} added to output data."
-                    )
+                    f"xr.DataArray with metadata created successfully for: "
+                    f"{sector_name}_{var_name}.")
 
     # second get xr data for wghm input
     if wghm_input_flag:
@@ -146,8 +197,8 @@ def get_selected_var_results_as_xr(results_dict,
                                               var_name,
                                               sector_name)
                 logger.debug(
-                    f"Variable {sector_name}_{var_name} added to output data."
-                    )
+                    f"xr.DataArray with metadata created successfully for: "
+                    f"{sector_name}_{var_name}.")
 
     return output_xr_data
 # ===============================================================
@@ -186,7 +237,7 @@ def save_datasets_to_netcdf(output_dir, output_xr_data):
                  for var in dataset.data_vars}
             dataset.to_netcdf(file_path, format='NETCDF4', encoding=encoding)
             saved_files.append(file_path)
-            logger.debug(f"Saved NetCDF file: {file_path}")
+            logger.debug(f"Saved NetCDF file: {key}.nc")
     logger.info(f"Total NetCDF files created: {len(saved_files)}")
     logger.debug(f"NetCDF saving runtime: {time.time() - start_time} seconds")
 
@@ -209,7 +260,6 @@ def save_global_annual_totals_to_excel(output_dir, var_dict):
     general_metadata_df, variable_metadata_df = \
         odp.create_metadata_global_annual_totals()
     filename = os.path.join(output_dir, 'global_annual_totals.xlsx')
-    logger.debug(f"Excel file path: {filename}")
     # Write to Excel file
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         # Save metadata
@@ -226,51 +276,5 @@ def save_global_annual_totals_to_excel(output_dir, var_dict):
         # Save each dataframe in separate sheets
         for variable_name, df in var_dict.items():
             df.to_excel(writer, sheet_name=variable_name)
-
-# ===============================================================
-# OUTPUT DATA MANAGER MAIN FUNCTION
-# ===============================================================
-
-
-def output_data_manager(gwswuse_results,
-                        output_selection,
-                        output_dir,
-                        start_year,
-                        end_year):
-    """
-    Manage the output data process.
-
-    Parameters
-    ----------
-    gwswuse_results : dict
-        The results from the groundwater and surface water use simulation.
-    output_selection : dict
-        The user-defined selection of outputs to be processed.
-    output_dir : str
-        The directory where the output files will be saved.
-    start_year : int
-        The start year of the simulation period.
-    end_year : int
-        The end year of the simulation period.
-    """
-    # initialize output selection
-    (output_sector_sel, output_vars_sel, wghm_input_flag,
-     global_annual_total_flag) = \
-        initialize_output_selection(output_selection)
-
-    # Global annual totals creation
-    if global_annual_total_flag:
-        df_global_annual_totals = \
-            odp.sum_global_annual_totals(gwswuse_results, start_year, end_year)
-
-        save_global_annual_totals_to_excel(output_dir, df_global_annual_totals)
-        logger.debug("Global annual totals are saved in xlsx file.")
-
-    # Prepare and save selected variables as NetCDF files
-    output_xr_data = get_selected_var_results_as_xr(gwswuse_results,
-                                                    output_sector_sel,
-                                                    output_vars_sel,
-                                                    wghm_input_flag)
-    save_datasets_to_netcdf(output_dir, output_xr_data)
-
-    return output_xr_data
+    logger.debug(
+        "Global annual totals are saved in global_annual_totals.xlsx.")

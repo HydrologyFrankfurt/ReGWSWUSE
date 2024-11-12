@@ -17,6 +17,7 @@ from model import utils as ut
 
 logger = get_logger(__name__)
 
+
 class IrrigationSimulator:
     """
     Class to handle irrigation water use simulations in the GWSWUSE model.
@@ -143,7 +144,7 @@ class IrrigationSimulator:
              if 'fraction_return_gw' in irr_data and
              isinstance(irr_data['fraction_return_gw'], xr.DataArray)
              else 0)
-        if (isinstance(self.fraction_return_gw, int) and 
+        if (isinstance(self.fraction_return_gw, int) and
             self.fraction_return_gw == 0):
             logger.info(
                 f"fraction_return_gw for {self.sector_name} is set to 0 by "
@@ -153,11 +154,11 @@ class IrrigationSimulator:
         if self.deficit_irrigation_mode:
             # Set groundwater depletion mask
             self.gwd_mask = irr_data['gwd_mask'].values
-    
+
             # Set abstraction irrigation part mask
             self.abstraction_irr_part_mask = \
                 irr_data['abstraction_irr_part_mask'].values
-    
+
             # Determine deficit irrigation locations
             self.deficit_irrigation_location = me.set_irr_deficit_locations(
                 self.gwd_mask, self.abstraction_irr_part_mask,
@@ -197,12 +198,10 @@ class IrrigationSimulator:
         self.simulate_irrigation()
 
         ut.test_net_abstraction_tot(self.consumptive_use_tot,
-                                 self.net_abstraction_gw,
-                                 self.net_abstraction_sw,
-                                 self.sector_name
-                                 )
-
-        logger.info("\nIrrigation simulation is completed.\n")
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_irrigation(self):
         """Run irrigation simulation with provided data and model equations."""

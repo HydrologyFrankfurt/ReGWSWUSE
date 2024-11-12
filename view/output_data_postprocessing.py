@@ -77,8 +77,7 @@ def write_to_xr_dataarray(result_np, coords, var_name, sector):
         result_xr[xr_var_name].attrs = variable_metadata
 
         result_xr.attrs = set_global_metadata()
-        logger.debug(f"xr.DataArray with metadata created successfully for: "
-                     f"{sector}/{var_name}.")
+
     except Exception as e:
         logger.error(
             f"Failed to create xarray.DataArray for {sector}/{var_name}: {e}")
@@ -320,8 +319,6 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
          Dictionary of dataframes, where keys are variable names and values are
          dataframes with global annual totals.
     """
-    # Start log for function entry
-    logger.info("Starting calculation of global annual totals.")
     # Define the range of years for the simulation period
     year_range = range(start_year, end_year + 1)
 
@@ -374,8 +371,6 @@ def sum_global_annual_totals(sectors_dict, start_year, end_year):
         # Add the dataframe for the current variable to the global_annuals_dict
         global_annuals_dict[var_name] = var_df
 
-    # End log for function exit
-    logger.info("Completed calculation of global annual totals.")
     # Log the entire output at once
     logger.info(log_output)
 

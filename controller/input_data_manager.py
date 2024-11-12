@@ -29,6 +29,76 @@ modname = modname.split('.')[0]
 logger = get_logger(__name__)
 
 # =============================================================================
+# INPUT DATA MANAGER MAIN FUNCTION
+# =============================================================================
+
+
+def input_data_manager(config):
+    """
+    Manage the loading, checking and pre-processing of input data.
+
+    Parameters
+    ----------
+    input_data_path : str
+        Path to the folder containing the input NetCDF files.
+    convention_path : str
+        Path to the file containing conventions and sector requirements.
+    start_year : int
+        The start year for the data processing.
+    end_year : int
+        The end year for the data processing.
+    time_extend_mode : bool
+        If True, the data is extended to include years before the start year
+        and after the end year. If False, the data is trimmed to the specified
+        date range.
+
+    Returns
+    -------
+    datasets : dict
+        A dictionary of loaded NetCDF datasets.
+    conventions : dict
+        The loaded conventions and sector requirements.
+    preprocessed_data : xr.DataArray or xr.Dataset
+        The preprocessed data.
+    check_results : dict
+        Results of the checks performed on the input data.
+
+    Notes
+    -----
+    This function performs the following steps:
+    1. Loads conventions from the specified path.
+    2. Loads input data from the specified folder according to sector
+       requirements.
+    3. Checks and preprocesses the input data.
+    4. Handle the results of input data checks.
+    """
+    # Confirm paths for input data and conventions
+    logger.debug("Using input data path: %s", config.input_data_path)
+    logger.debug("Loading conventions from: %s", config.convention_path)
+
+    # load conventions
+    logger.debug("Loading input data conventions...")
+    conventions = load_conventions(config.convention_path)
+    sector_requirements = conventions['sector_requirements']
+    logger.debug("Input data conventions loaded successfully.")
+
+    # load input data
+    logger.debug("Loading input data from NetCDF files...")
+    datasets_dict = \
+        load_netcdf_files(config.input_data_path, sector_requirements)
+    logger.debug("Input data loading completed.")
+
+    # check and preprocess input_data
+    logger.debug("Starting input data check and preprocessing...")
+    preprocessed_data, check_logs = check_and_preprocess_input_data(
+        datasets_dict, conventions, config
+        )
+
+    check_results_handling(check_logs)
+    logger.debug("Input data check and preprocessing completed.\n")
+
+    return preprocessed_data, check_logs, datasets_dict, conventions
+# =============================================================================
 # LOAD CONVENTION DICT AND INPUT DATA
 # =============================================================================
 
@@ -183,6 +253,7 @@ def check_results_handling(check_results):
                     "input_data_convention.json.\n Please verify:"
                     f"{issues_list}"
                     )
+
         elif isinstance(result, bool):
             # Handle lat/lon consistency check
             if category == "lat_lon_consistency":
@@ -196,7 +267,10 @@ def check_results_handling(check_results):
 
         elif isinstance(result, list) and not result:
             # Empty lists are only informational
-            logger.debug(f"{category}: No issues detected")
+            if category == "extended_time_period":
+                pass
+            else:
+                logger.debug(f"{category}: No issues detected")
 
     # Check if critical errors were found and exit the program if necessary
     if critical_error_found:
@@ -204,74 +278,3 @@ def check_results_handling(check_results):
             "Critical errors were found during input data checks. "
             "Exiting program.")
         sys.exit(1)
-
-# =============================================================================
-# INPUT DATA MANAGER MAIN FUNCTION
-# =============================================================================
-
-
-def input_data_manager(config):
-    """
-    Manage the loading, checking and pre-processing of input data.
-
-    Parameters
-    ----------
-    input_data_path : str
-        Path to the folder containing the input NetCDF files.
-    convention_path : str
-        Path to the file containing conventions and sector requirements.
-    start_year : int
-        The start year for the data processing.
-    end_year : int
-        The end year for the data processing.
-    time_extend_mode : bool
-        If True, the data is extended to include years before the start year
-        and after the end year. If False, the data is trimmed to the specified
-        date range.
-
-    Returns
-    -------
-    datasets : dict
-        A dictionary of loaded NetCDF datasets.
-    conventions : dict
-        The loaded conventions and sector requirements.
-    preprocessed_data : xr.DataArray or xr.Dataset
-        The preprocessed data.
-    check_results : dict
-        Results of the checks performed on the input data.
-
-    Notes
-    -----
-    This function performs the following steps:
-    1. Loads conventions from the specified path.
-    2. Loads input data from the specified folder according to sector
-       requirements.
-    3. Checks and preprocesses the input data.
-    4. Handle the results of input data checks.
-    """
-    # Confirm paths for input data and conventions
-    logger.debug("Using input data path: %s", config.input_data_path)
-    logger.debug("Loading conventions from: %s", config.convention_path)
-
-    # load conventions
-    logger.debug("Loading input data conventions...")
-    conventions = load_conventions(config.convention_path)
-    sector_requirements = conventions['sector_requirements']
-    logger.debug("Input data conventions loaded successfully.")
-
-    # load input data
-    logger.debug("Loading input data from NetCDF files...")
-    datasets_dict = \
-        load_netcdf_files(config.input_data_path, sector_requirements)
-    logger.debug("Input data loading completed.")
-
-    # check and preprocess input_data
-    logger.debug("Starting input data check and preprocessing...")
-    preprocessed_data, check_logs = check_and_preprocess_input_data(
-        datasets_dict, conventions, config
-        )
-
-    check_results_handling(check_logs)
-    logger.debug("Input data check and preprocessing completed.\n")
-
-    return preprocessed_data, check_logs, datasets_dict, conventions
