@@ -69,8 +69,8 @@ def write_to_xr_dataarray(result_np, coords, var_name, sector):
             result_xr = result_xr.chunk({'time': 1, 'lat': 360, 'lon': 720})
 
         variable_metadata = set_variable_metadata_xr(sector, var_name)
-        xr_var_name = variable_metadata['standard_name']
-        del variable_metadata['standard_name']
+        xr_var_name = variable_metadata['isimip_name']
+        del variable_metadata['isimip_name']
 
         result_xr[xr_var_name] = \
             xr.DataArray(result_np, coords=coords)
@@ -207,7 +207,7 @@ def set_global_metadata():
             ),
             'institution': watergap_version.__institution__,
             'contact': "contact@hydrology.uni-frankfurt.de",
-            'model_version':  "WaterGAP" + " " + watergap_version.__version__,
+            'model_version':  "WaterGAP " + watergap_version.__version__,
             'reference': watergap_version.__reference__,
             'Creation_date': dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }

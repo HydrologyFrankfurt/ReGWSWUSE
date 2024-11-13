@@ -19,7 +19,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_consumptive_use_tot',
-            'isimip_name': 'ptotuse',
+            'isimip_name': 'puse',
             'long_name': 'Monthly potential total consumptive water use',
             'unit': 'm3/month'
             },
@@ -62,7 +62,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_consumptive_use_gw',
-            'isimip_name': 'ptotusegw',
+            'isimip_name': 'pusegw',
             'long_name': 'Monthly potential total consumptive groundwater use',
             'unit': 'm3/month'
             },
@@ -108,7 +108,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_consumptive_use_sw',
-            'isimip_name': 'ptotusesw',
+            'isimip_name': 'pusesw',
             'long_name': (
                 'Monthly potential total consumptive surface water use'),
             'unit': 'm3/month'
@@ -157,7 +157,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_abstraction_tot',
-            'isimip_name': 'ptotww',
+            'isimip_name': 'pww',
             'long_name': 'Monthly potential total water abstraction',
             'unit': 'm3/month'
             },
@@ -198,7 +198,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_abstraction_gw',
-            'isimip_name': 'ptotwwgw',
+            'isimip_name': 'pwwgw',
             'long_name': 'Monthly potential total groundwater abstraction',
             'unit': 'm3/month'
             },
@@ -242,7 +242,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_abstraction_sw',
-            'isimip_name': 'ptotwwsw',
+            'isimip_name': 'pwwsw',
             'long_name': 'Monthly potential total surface water abstraction',
             'unit': 'm3/month'
             },
@@ -287,7 +287,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_return_flow_tot',
-            'isimip_name': 'ptotrf',
+            'isimip_name': 'prf',
             'long_name': 'Monthly potential total return flow',
             'unit': 'm3/month'
             },
@@ -328,7 +328,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_return_flow_gw',
-            'isimip_name': 'ptotrfgw',
+            'isimip_name': 'prfgw',
             'long_name': 'Monthly potential total return flow to groundwater',
             'unit': 'm3/month'
             },
@@ -374,7 +374,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_return_flow_sw',
-            'isimip_name': 'ptotrfsw',
+            'isimip_name': 'prfsw',
             'long_name': (
                 'Monthly potential total return flow to surface water'),
             'unit': 'm3/month'
@@ -421,7 +421,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_net_abstraction_gw',
-            'isimip_name': 'ptotnag',
+            'isimip_name': 'pnag',
             'long_name': 'Monthly potential total groundwater net abstraction',
             'unit': 'm3/month'
             },
@@ -467,7 +467,7 @@ modelvars = {
             },
         'total': {
             'standard_name': 'total_net_abstraction_sw',
-            'isimip_name': 'ptotnas',
+            'isimip_name': 'pnas',
             'long_name': (
                 'Monthly potential total surface water net abstraction'),
             'unit': 'm3/month'
