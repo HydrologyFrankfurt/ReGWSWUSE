@@ -44,7 +44,7 @@ def parse_cli():
                               '(default: default_config.json)'))
 
     # Optionales Argument für Debug-Modus (True/False)
-    parser.add_argument('--debug', action="store_true", default=True,
+    parser.add_argument('--debug', action="store_true", default=False,
                         help=(
                             'Enable or disable TraceBack for debugging by '
                             'setting True or False'))

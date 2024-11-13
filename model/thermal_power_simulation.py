@@ -10,21 +10,15 @@
 # =============================================================================
 """GWSWUSE thermal power simulation module."""
 
-import os
 import xarray as xr
-from misc import cell_simulation_printer as csp
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
+logger = get_logger(__name__)
 
 
 class ThermalPowerSimulator:
-    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle thermal power water use simulations in the GWSWUSE model.
 
@@ -93,6 +87,7 @@ class ThermalPowerSimulator:
             Dictionary containing xarray.DataArrays for various thermal power
             variables.
         """
+        self.sector_name = 'thermal power'
         # Initialize relevant configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -120,11 +115,11 @@ class ThermalPowerSimulator:
         # Store the coordinates for later use
         self.coords = tp_data['consumptive_use_tot'].coords
         # print headline for cell simulation prints
-        csp.print_cell_output_headline(
-            'thermal_power', config.cell_specific_output, self.csp_flag
+        ut.print_cell_output_headline(
+            self.sector_name, config.cell_specific_output, self.csp_flag
             )
         # get idx for coords for cell specific output
-        self.coords_idx = csp.get_np_coords_cell_idx(
+        self.coords_idx = ut.get_np_coords_cell_idx(
             tp_data['consumptive_use_tot'], 'thermal_power',
             config.cell_specific_output, self.csp_flag
             )
@@ -132,7 +127,11 @@ class ThermalPowerSimulator:
         # Run the irrigation simulation
         self.simulate_thermal_power()
 
-        # print("Thermal power simulation was performed. \n")
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_thermal_power(self):
         """Run thermal power simulation with provided data."""
@@ -159,55 +158,54 @@ class ThermalPowerSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'tp_consumptive_use_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'tp_abstraction_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'tp_fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'tp_consumptive_use_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'tp_consumptive_use_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'tp_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'tp_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'tp_return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'tp_fraction_return_gw', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'tp_return_flow_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'tp_return_flow_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'tp_net_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'tp_net_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        print()

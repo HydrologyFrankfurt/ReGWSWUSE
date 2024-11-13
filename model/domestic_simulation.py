@@ -10,21 +10,15 @@
 # =============================================================================
 """GWSWUSE domestic simulation module."""
 
-import os
 import xarray as xr
-from misc import cell_simulation_printer as csp
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
+logger = get_logger(__name__)
 
 
 class DomesticSimulator:
-    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle domestic water use simulations in the GWSWUSE model.
 
@@ -91,6 +85,7 @@ class DomesticSimulator:
             Dictionary containing xarray.DataArrays for various domestic
             variables.
         """
+        self.sector_name = 'domestic'
         # Initialize relevant configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -118,18 +113,22 @@ class DomesticSimulator:
         # Store the coordinates for later use
         self.coords = dom_data['consumptive_use_tot'].coords
         # print headline for cell simulation prints
-        csp.print_cell_output_headline(
+        ut.print_cell_output_headline(
             'domestic', config.cell_specific_output, self.csp_flag
             )
         # get idx for coords for cell specific output
-        self.coords_idx = csp.get_np_coords_cell_idx(
+        self.coords_idx = ut.get_np_coords_cell_idx(
             dom_data['consumptive_use_tot'], 'domestic',
             config.cell_specific_output, self.csp_flag
             )
         # Run the domestic simulation
         self.simulate_domestic()
 
-        # print("Domestic simulation was performed. \n")
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_domestic(self):
         """Run domestic simulation with provided data and model equations."""
@@ -156,55 +155,54 @@ class DomesticSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'dom_consumptive_use_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'dom_abstraction_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'dom_fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'dom_consumptive_use_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'dom_consumptive_use_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'dom_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'dom_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'dom_return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'dom_fraction_return_gw', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'dom_return_flow_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'dom_return_flow_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'dom_net_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'dom_net_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        print()

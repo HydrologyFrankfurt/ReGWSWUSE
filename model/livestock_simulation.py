@@ -10,21 +10,15 @@
 # =============================================================================
 """GWSWUSE livestock simulation module."""
 
-import os
 import xarray as xr
-from misc import cell_simulation_printer as csp
+from gwswuse_logger import get_logger
 from model import model_equations as me
+from model import utils as ut
 
-# ===============================================================
-# Get module name and remove the .py extension
-# Module name is passed to logger
-# # =============================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
+logger = get_logger(__name__)
 
 
 class LivestockSimulator:
-    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     """
     Class to handle livestock water use simulations in the GWSWUSE model.
 
@@ -92,6 +86,7 @@ class LivestockSimulator:
             Dictionary containing xarray.DataArrays for various livestock
             variables.
         """
+        self.sector_name = 'livestock'
         # Initialize relevant configuration settings
         self.csp_flag = config.cell_specific_output['flag']
 
@@ -123,11 +118,11 @@ class LivestockSimulator:
         # Store the coordinates for later use
         self.coords = liv_data['consumptive_use_tot'].coords
         # print headline for cell simulation prints
-        csp.print_cell_output_headline(
-            'livestock', config.cell_specific_output, self.csp_flag
+        ut.print_cell_output_headline(
+            self.sector_name, config.cell_specific_output, self.csp_flag
             )
         # get idx for coords for cell specific output
-        self.coords_idx = csp.get_np_coords_cell_idx(
+        self.coords_idx = ut.get_np_coords_cell_idx(
             liv_data['consumptive_use_tot'], 'livestock',
             config.cell_specific_output, self.csp_flag
             )
@@ -135,7 +130,11 @@ class LivestockSimulator:
         # Run the irrigation simulation
         self.simulate_livestock()
 
-        # print("Livestock simulation was performed. \n")
+        ut.test_net_abstraction_tot(self.consumptive_use_tot,
+                                    self.net_abstraction_gw,
+                                    self.net_abstraction_sw,
+                                    self.sector_name
+                                    )
 
     def simulate_livestock(self):
         """Run livestock simulation with provided data and model equations."""
@@ -162,55 +161,54 @@ class LivestockSimulator:
                                          self.abstraction_sw,
                                          self.return_flow_sw)
 
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_tot, 'liv_consumptive_use_tot',
             self.coords_idx, self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_tot, 'liv_abstraction_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_gw_use, 'liv_fraction_gw_use', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_gw, 'liv_consumptive_use_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.consumptive_use_sw, 'liv_consumptive_use_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_gw, 'liv_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.abstraction_sw, 'liv_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag)
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_tot, 'liv_return_flow_tot', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.fraction_return_gw, 'liv_fraction_return_gw', self.coords_idx,
             flag=self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_gw, 'liv_return_flow_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.return_flow_sw, 'liv_return_flow_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_gw, 'liv_net_abstraction_gw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        csp.print_cell_value(
+        ut.print_cell_value(
             self.net_abstraction_sw, 'liv_net_abstraction_sw', self.coords_idx,
             self.unit, self.csp_flag
             )
-        print()

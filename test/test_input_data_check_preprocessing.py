@@ -3,8 +3,18 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 from controller.input_data_check_preprocessing import (
-    check_and_preprocess_input_data, initialize_logs,
-    generate_validation_results)
+    check_and_preprocess_input_data, initialize_logs)
+
+
+class Config:
+    def __init__(self):
+        self.start_year = 2000
+        self.end_year = 2005
+        self.time_extend_mode = False
+        self.deficit_irrigation_mode = True
+        self.irrigation_input_based_on_aei = True
+        self.correct_irrigation_t_aai_mode = True
+
 
 class TestValidationPreprocessing(unittest.TestCase):
     def setUp(self):
@@ -17,8 +27,8 @@ class TestValidationPreprocessing(unittest.TestCase):
         # Create a sample dataset with random values for testing
         self.sample_dataset = xr.Dataset({
             'ptotuse': (('time', 'lat', 'lon'),
-                            np.random.rand(len(times), len(self.latitudes),
-                                           len(self.longitudes))),
+                        np.random.rand(len(times), len(self.latitudes),
+                                       len(self.longitudes))),
         }, coords={
             'time': times,
             'lat': self.latitudes,
@@ -36,6 +46,28 @@ class TestValidationPreprocessing(unittest.TestCase):
             'lat': self.latitudes,
             'lon': self.other_longitudes,
         })
+        # Create a sample dataset with random values for testing
+        self.fraction_aai_aei = xr.Dataset({
+            'fraction_aai_aei': (('time', 'lat', 'lon'),
+                                 np.random.rand(
+                                     len(times), len(self.latitudes),
+                                     len(self.longitudes))),
+        }, coords={
+            'time': times,
+            'lat': self.latitudes,
+            'lon': self.longitudes,
+        })
+        # Create a sample dataset with random values for testing
+        self.time_factor_aai = xr.Dataset({
+            'time_factor_aai': (('time', 'lat', 'lon'),
+                                np.random.rand(
+                                    len(times), len(self.latitudes),
+                                    len(self.longitudes))),
+        }, coords={
+            'time': times,
+            'lat': self.latitudes,
+            'lon': self.longitudes,
+        })
 
         # Define conventions and sector requirements for testing
         self.conventions = {
@@ -51,84 +83,124 @@ class TestValidationPreprocessing(unittest.TestCase):
         }
 
         # Set up other parameters for testing
-        self.datasets = [(self.sample_dataset, 'irrigation', 'consumptive_use_tot')]
-        self.other_lon_datasets = [
-            (self.sample_dataset, 'irrigation', 'consumptive_use_tot'),
-            (self.other_lon_dataset, 'irrigation', 'fraction_gw_use')]
+        self.datasets = {'irrigation': {
+            'consumptive_use_tot': self.sample_dataset,
+            'fraction_aai_aei': self.fraction_aai_aei,
+            'time_factor_aai': self.time_factor_aai}
+            }
+        self.other_lon_datasets = {'irrigation': {
+            'consumptive_use_tot': self.sample_dataset,
+            'fraction_gw_use': self.other_lon_dataset,
+            'fraction_aai_aei': self.fraction_aai_aei,
+            'time_factor_aai': self.time_factor_aai}
+            }
+        self.config = Config()
         self.start_year = 2000
         self.end_year = 2005
-        self.time_extend_mode = False
-
 
     def test_check_and_preprocess_input_data(self):
         # Test the check and preprocess function with the sample dataset
-        preprocessed_datasets, validation_results = check_and_preprocess_input_data(
-            self.datasets, self.conventions, self.start_year, self.end_year, self.time_extend_mode
-        )
+        preprocessed_datasets, check_logs = \
+            check_and_preprocess_input_data(
+                self.datasets, self.conventions, self.config)
 
         # Validate the results to ensure there are no errors in the dataset
-        self.assertTrue(validation_results['Input data with multiple variables'] == [])
         self.assertTrue(
-            validation_results['Input data with incorrect units'] == [],
-            f"Validation failed for incorrect units: "
-            f"{validation_results['Input data with incorrect units']}"
-            f"{preprocessed_datasets['irrigation']['consumptive_use_tot'].units}")
-        self.assertTrue(validation_results['Input data with missing units'] == [], f"Validation failed for missing units: {validation_results['Input data with missing units']}")
-        self.assertTrue(validation_results['Input data with missing time coordinates'] == [], f"Validation failed for missing time coordinates: {validation_results['Input data with missing time coordinates']}")
-        self.assertTrue(validation_results['Input data with incorrect time resolution'] == [], f"Validation failed for incorrect time resolution: {validation_results['Input data with incorrect time resolution']}")
-        self.assertTrue(validation_results['Compatibility of lat and lon coords is given'])
+            check_logs['too_many_vars'] == [])
+        self.assertTrue(
+            check_logs['unit_mismatch'] == [])
+        self.assertTrue(
+            check_logs['missing_unit'] == [],
+            f"Validation failed for missing units: "
+            f"{check_logs['missing_unit']}")
+        self.assertTrue(
+            check_logs['missing_time_coords'] == [],
+            (f"Validation failed for missing time coordinates: "
+             f"{check_logs['missing_time_coords']}"))
+        self.assertTrue(
+            check_logs['time_resolution_mismatch'] == [],
+            f"Validation failed for incorrect time resolution: "
+            f"{check_logs['time_resolution_mismatch']}")
 
-        preprocessed_datasets, validation_results = check_and_preprocess_input_data(
-            self.other_lon_datasets, self.conventions, self.start_year, self.end_year, self.time_extend_mode
-        )
+        self.assertTrue(check_logs['lat_lon_consistency'])
+
+        preprocessed_datasets, check_logs = check_and_preprocess_input_data(
+            self.other_lon_datasets, self.conventions, self.config
+            )
         # Validate the results to ensure there are no errors in the dataset
-        self.assertTrue(validation_results['Input data with multiple variables'] == [])
+        self.assertTrue(check_logs['too_many_vars'] == [])
         self.assertTrue(
-            validation_results['Input data with incorrect units'] == [],
+            check_logs['unit_mismatch'] == [],
             f"Validation failed for incorrect units: "
-            f"{validation_results['Input data with incorrect units']}"
-            f"{preprocessed_datasets['irrigation']['consumptive_use_tot'].units}")
-        self.assertTrue(validation_results['Input data with missing units'] == [], f"Validation failed for missing units: {validation_results['Input data with missing units']}")
-        self.assertTrue(validation_results['Input data with missing time coordinates'] == [], f"Validation failed for missing time coordinates: {validation_results['Input data with missing time coordinates']}")
-        self.assertTrue(validation_results['Input data with incorrect time resolution'] == [], f"Validation failed for incorrect time resolution: {validation_results['Input data with incorrect time resolution']}")
-        self.assertFalse(validation_results['Compatibility of lat and lon coords is given'])
+            f"{check_logs['unit_mismatch']}")
+        self.assertTrue(
+            check_logs['missing_unit'] == [],
+            f"Validation failed for missing units: "
+            f"{check_logs['missing_unit']}")
+        self.assertTrue(
+            check_logs['missing_time_coords'] == [],
+            f"Validation failed for missing time coordinates: "
+            f"{check_logs['missing_time_coords']}")
+        self.assertTrue(
+            check_logs['time_resolution_mismatch'] == [],
+            f"Validation failed for incorrect time resolution: "
+            f"{check_logs['time_resolution_mismatch']}")
+        self.assertFalse(
+            check_logs['lat_lon_consistency'])
 
     def test_extend_xr_data(self):
+        extend_config = self.config
+        extend_config.end_year += 2
+        extend_config.time_extend_mode = True
         # Test the extension of dataset time coverage
-        preprocessed_datasets, validation_results = check_and_preprocess_input_data(
-            self.datasets, self.conventions, self.start_year, self.end_year + 2, True
+        preprocessed_datasets, check_logs = check_and_preprocess_input_data(
+            self.datasets, self.conventions, extend_config
         )
 
         # Verify that the time coordinate of the dataset has been extended
-        extended_time = pd.to_datetime(preprocessed_datasets['irrigation']['consumptive_use_tot'].coords['time'].values)
-        self.assertEqual(extended_time[0].year, self.start_year)
-        self.assertEqual(extended_time[-1].year, self.end_year + 2)
-        
+        extended_time = \
+            pd.to_datetime(
+                preprocessed_datasets['irrigation']['consumptive_use_tot'
+                                                    ].coords['time'].values)
+        self.assertEqual(extended_time[0].year, extend_config.start_year)
+        self.assertEqual(extended_time[-1].year, extend_config.end_year)
+
         # Check that the validation results reflect the extension
-        self.assertIn('irrigation/consumptive_use_tot', validation_results['Input data with extended time to cover simulation period'])
+        self.assertIn('irrigation/consumptive_use_tot',
+                      check_logs['extended_time_period'])
 
     def test_trim_xr_data(self):
         # Test the trimming functionality by providing an extended dataset
         extended_times = pd.date_range('1998-01-01', '2007-12-31', freq='YS')
         extended_dataset = xr.Dataset({
-            'consumptive_use_tot': (('time', 'lat', 'lon'),
-                            np.random.rand(len(extended_times), len(self.latitudes), len(self.longitudes))),
+            'consumptive_use_tot': (
+                ('time', 'lat', 'lon'),
+                np.random.rand(len(extended_times),
+                               len(self.latitudes),
+                               len(self.longitudes))),
         }, coords={
             'time': extended_times,
             'lat': self.latitudes,
             'lon': self.longitudes,
         })
-        datasets = [(extended_dataset, 'irrigation', 'consumptive_use_tot')]
+        datasets = {'irrigation': {
+            'consumptive_use_tot': extended_dataset,
+            'fraction_aai_aei': self.fraction_aai_aei,
+            'time_factor_aai': self.time_factor_aai}
+            }
 
         # Preprocess the dataset to trim it to the desired time range
-        preprocessed_datasets, validation_results = check_and_preprocess_input_data(
-            datasets, self.conventions, self.start_year, self.end_year, False
-        )
+        preprocessed_datasets, check_logs = check_and_preprocess_input_data(
+            datasets, self.conventions, self.config)
 
         # Verify that the dataset has been trimmed correctly
-        trimmed_time = pd.to_datetime(preprocessed_datasets['irrigation']['consumptive_use_tot'].coords['time'].values)
-        self.assertEqual(trimmed_time[0].year, self.start_year)
-        self.assertEqual(trimmed_time[-1].year, self.end_year)
+        trimmed_time = \
+            pd.to_datetime(
+                preprocessed_datasets['irrigation']['consumptive_use_tot'
+                                                    ].coords['time'].values)
+        self.assertEqual(trimmed_time[0].year, self.config.start_year)
+        self.assertEqual(trimmed_time[-1].year, self.config.end_year)
+
 
 if __name__ == '__main__':
     unittest.main()
