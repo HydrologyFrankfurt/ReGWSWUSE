@@ -363,7 +363,7 @@ class ConfigHandler:
         """Save configuration in output_path json file."""
         current_date = datetime.now().strftime("%Y_%m_%d")
         config_output_name = \
-            self.output_dir + "config_" + current_date + ".json"
+            os.path.join(self.output_dir, "config_" + current_date + ".json")
         try:
             with open(config_output_name, "w") as json_file:
                 json.dump(self.config_data, json_file, indent=4)
