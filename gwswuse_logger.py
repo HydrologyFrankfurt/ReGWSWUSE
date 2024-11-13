@@ -74,9 +74,9 @@ def setup_logger(debug=False):
                 'class': 'logging.handlers.RotatingFileHandler',
                 'level': 'DEBUG',  # DEBUG and above will be saved to file
                 'formatter': 'detailed',
-                'filename': './logs/simulation.log',
-                'maxBytes': 10485760,  # 10 MB per log file
-                'backupCount': 3,  # Keep up to 3 backup log files
+                'filename': './logs/gwswuse.log',
+                'maxBytes': 5242880,  # 5 MB per log file
+                'backupCount': 2,  # Keep up to 2 backup log files
                 'mode': 'a',  # Append to the existing log file
             },
         },
