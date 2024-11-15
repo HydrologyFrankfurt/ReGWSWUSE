@@ -15,13 +15,14 @@ import numpy as np
 from gwswuse_logger import get_logger
 
 logger = get_logger(__name__)
+
+
 # =============================================================================
 # CHECK FUNCTIONS
 # =============================================================================
-
 def check_dataset_structure_metadata(
         dataset, variable, reference_names, unit_vars, expected_units, log_id,
-        logs
+        check_logs
         ):
     """
     Validate and log metadata related to the structure of the dataset.
@@ -45,39 +46,40 @@ def check_dataset_structure_metadata(
         The expected units for the variable.
     log_id : str
         A unique identifier for logging the dataset's validation results.
-    logs : dict
+    check_logs : dict
         A dictionary used for tracking validation results, including issues
         with the variable name or units.
 
     Returns
     -------
-    dict
-        The updated logs reflecting any detected issues during validation.
+    check_logs : dict
+        The updated check_logs reflecting any detected issues during validation
+        of variable numbers, variable name and unit.
     """
     # Check if only one variable exists in the dataset
     if len(dataset.data_vars) != 1:
-        logs.setdefault("too_many_vars", []).append(log_id)
+        check_logs.setdefault("too_many_vars", []).append(log_id)
 
     # Check the first variable in the dataset
     first_var_name, first_data_var = next(iter(dataset.data_vars.items()))
 
     # Log if the variable name is not in the reference list
     if first_var_name not in reference_names:
-        logs.setdefault("unknown_vars", []).append(log_id)
+        check_logs.setdefault("unknown_vars", []).append(log_id)
 
     # Log if the variable has incorrect or missing units (if applicable)
     if variable in unit_vars:
         if 'units' in first_data_var.attrs:
             if expected_units and first_data_var.attrs['units'] not in \
                 expected_units:
-                logs.setdefault("unit_mismatch", []).append(log_id)
+                check_logs.setdefault("unit_mismatch", []).append(log_id)
         else:
-            logs.setdefault("missing_unit", []).append(log_id)
+            check_logs.setdefault("missing_unit", []).append(log_id)
 
-    return logs
+    return check_logs
 
 
-def check_spatial_coords(dataset, logs):
+def check_spatial_coords(dataset, check_logs):
     """
     Check if the dataset's latitude and longitude coords match a reference.
 
@@ -86,7 +88,7 @@ def check_spatial_coords(dataset, logs):
     dataset : xarray.Dataset
         The dataset containing latitude ('lat') and longitude ('lon')
         coordinates to be checked.
-    logs : dict
+    check_logs : dict
         A dictionary used for tracking validation results. It contains:
         - "lat_lon_reference": tuple of numpy.ndarray or None
             The reference latitude and longitude coordinates to compare
@@ -97,29 +99,29 @@ def check_spatial_coords(dataset, logs):
 
     Returns
     -------
-    dict
-        The updated logs reflecting any detected issues with latitude and
+    check_logs : dict
+        The updated check_logs reflecting any detected issues with latitude and
         longitude consistency.
     """
     if 'lat' in dataset.coords and 'lon' in dataset.coords:
         lat = dataset.coords['lat'].values
         lon = dataset.coords['lon'].values
 
-        if logs["lat_lon_reference"] is None:
-            logs["lat_lon_reference"] = (lat, lon)
+        if check_logs["lat_lon_reference"] is None:
+            check_logs["lat_lon_reference"] = (lat, lon)
         else:
-            if not np.array_equal(lat, logs["lat_lon_reference"][0]):
-                logs["lat_lon_consistency"] = False
-            if not np.array_equal(lon, logs["lat_lon_reference"][1]):
-                logs["lat_lon_consistency"] = False
+            if not np.array_equal(lat, check_logs["lat_lon_reference"][0]):
+                check_logs["lat_lon_consistency"] = False
+            if not np.array_equal(lon, check_logs["lat_lon_reference"][1]):
+                check_logs["lat_lon_consistency"] = False
     else:
-        logs["lat_lon_consistency"] = False
+        check_logs["lat_lon_consistency"] = False
 
-    return logs
+    return check_logs
 
 
 def check_time_coords(
-        xr_data, expected_frequency, start_year, end_year, log_id, logs):
+        data, expected_frequency, start_year, end_year, log_id, check_logs):
     """
     Validate the time coordinates of a dataset and log issues.
 
@@ -130,9 +132,9 @@ def check_time_coords(
 
     Parameters
     ----------
-    xr_data : xarray.Dataset or xarray.DataArray
+    data : xarray.Dataset or xarray.DataArray
         The dataset or data array containing the time coordinates to validate.
-    expected_frequency: str
+    expected_frequency : str
         The expected time frequency, either 'monthly' or 'annual'.
     start_year : int
         The start year of the required time period.
@@ -140,19 +142,19 @@ def check_time_coords(
         The end year of the required time period.
     log_id : str
         A unique identifier for logging the dataset's validation results.
-    logs : dict
+    check_logs : dict
         A dictionary used for tracking validation results, including issues
         with time coordinates, resolution, or coverage.
 
     Returns
     -------
-    logs : dict
-        The updated logs reflecting any detected issues during time coordinate
-        validation.
+    check_logs : dict
+        The updated check_logs reflecting any detected issues during time
+        coordinate validation.
     """
-    if 'time' in xr_data.coords:
+    if 'time' in data.coords:
         # Extract time values from coords
-        data_time_points = pd.to_datetime(xr_data.coords['time'].values)
+        data_time_points = pd.to_datetime(data.coords['time'].values)
         data_years = data_time_points.year
 
         if expected_frequency == 'monthly':
@@ -178,13 +180,14 @@ def check_time_coords(
             )
         # Verify that the data´s time points cover all expected time points
         if not set(expected_time_points).issubset(set(data_time_points)):
-            logs.setdefault("time_resolution_mismatch", []).append(log_id)
-        # Check if the data's time range fully covers 
-        # required start_year to end_year
+            check_logs.setdefault("time_resolution_mismatch", []
+                                  ).append(log_id)
+        # Check if the data's time range fully covers required start_year to
+        # end_year
         if min(data_years) > start_year or max(data_years) < end_year:
-            logs.setdefault("missing_time_coverage", []).append(log_id)
+            check_logs.setdefault("missing_time_coverage", []).append(log_id)
     else:
         # Log missing time coordinates if 'time' is not in data's coordinates
-        logs.setdefault("missing_time_coords", []).append(log_id)
+        check_logs.setdefault("missing_time_coords", []).append(log_id)
 
-    return logs
+    return check_logs

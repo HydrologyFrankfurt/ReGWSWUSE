@@ -28,28 +28,38 @@ logger = get_logger(__name__)
 # ===============================================================
 
 
-def output_data_manager(gwswuse_results,
-                        output_selection,
-                        output_dir,
-                        start_year,
-                        end_year):
+def output_data_manager(
+        gwswuse_results, output_selection, output_dir, start_year, end_year):
     """
-    Manage the output data process.
+    Manage the output data processing and saving.
+
+    This function processes and saves the output data based on user-defined
+    selections. It calculates global annual totals if required, extracts the
+    selected variables, and saves them as NetCDF files.
 
     Parameters
     ----------
     gwswuse_results : dict
-        The results from the groundwater and surface water use simulation.
+        Dictionary containing results from the GWSWUSE simulation, organized by
+        sector names as keys. Each sector contains attributes for variables and
+        coordinates.
     output_selection : dict
-        The user-defined selection of outputs to be processed.
+        Dictionary specifying the user's selection of sectors and variables to
+        include in the output.
     output_dir : str
-        The directory where the output files will be saved.
+        Path to the directory where the output files will be saved.
     start_year : int
         The start year of the simulation period.
     end_year : int
         The end year of the simulation period.
+
+    Returns
+    -------
+    output_xr_data : dict
+        Dictionary containing the processed xarray.Dataset objects for the
+        selected output variables.
     """
-    # initialize output selection
+    # Initialize output selection
     (output_sector_sel, output_vars_sel, wghm_input_flag,
      global_annual_total_flag) = \
         initialize_output_selection(output_selection)
@@ -57,18 +67,19 @@ def output_data_manager(gwswuse_results,
     # Global annual totals creation
     if global_annual_total_flag:
         logger.debug("Starting calculation of global annual totals.")
-        df_global_annual_totals = \
+        global_annuals_dict = \
             odp.sum_global_annual_totals(gwswuse_results, start_year, end_year)
         # End log for function exit
         logger.debug("Calculation of global annual totals completed.")
+        # Save global annual totals in xlsx file with multiple sheets
+        save_global_annual_totals_to_excel(output_dir, global_annuals_dict)
 
-        save_global_annual_totals_to_excel(output_dir, df_global_annual_totals)
-
-    # Prepare and save selected variables as NetCDF files
+    # Prepare and save selected variables as xarray dataarrays
     output_xr_data = get_selected_var_results_as_xr(gwswuse_results,
                                                     output_sector_sel,
                                                     output_vars_sel,
                                                     wghm_input_flag)
+    # Save xr data as netcdf files in output_dir
     save_datasets_to_netcdf(output_dir, output_xr_data)
 
     logger.info(f"Output data saved in:\n{output_dir}")
@@ -84,20 +95,26 @@ def initialize_output_selection(output_selection):
     """
     Initialize selection of output data from configuration.
 
+    This function parses the user's output selection configuration to identify
+    selected sectors, variables, and additional processing options.
+
     Parameters
     ----------
     output_selection : dict
-        The user-defined selection of outputs to be processed.
+        Dictionary specifying the user's selection of sectors and variables
+        to include in the output.
 
     Returns
     -------
     output_sector_sel : list
-        List of selected sectors.
+        List of sector names selected for output.
     output_vars_sel : list
-        List of selected variables.
+        List of variables selected for output, including variable categories
+        and types (formatted as "category_type").
     wghm_input_flag : bool
-        Flag indicating whether dict with wghm input variables in xr.DataArray
-        format should be kept in memory.
+        Flag indicating whether variables that serve as input for the
+        WaterGAP Global Hydrology Model (WGHM) should be saved as NetCDF
+        files.
     global_annual_total_flag : bool
         Flag indicating whether to calculate and save global annual totals.
 
@@ -132,7 +149,7 @@ def initialize_output_selection(output_selection):
             wghm_input_flag, global_annual_total_flag)
 
 
-def get_selected_var_results_as_xr(results_dict,
+def get_selected_var_results_as_xr(gwswuse_results,
                                    output_sector_sel,
                                    output_vars_sel,
                                    wghm_input_flag,
@@ -142,30 +159,35 @@ def get_selected_var_results_as_xr(results_dict,
 
     Parameters
     ----------
-    results_dict : dict
-        Dictionary containing the results in numpy from the simulation.
+    gwswuse_results : dict
+        Dictionary containing results from the GWSWUSE simulation, organized by
+        sector names as keys. Each sector contains attributes for variables and
+        coordinates.
     output_sector_sel : list
-        List of selected sectors.
+        List of sector names selected for output.
     output_vars_sel : list
-        List of selected variables.
+        List of variables selected for output, including variable categories
+        and types (formatted as "category_type").
     wghm_input_flag : bool
-        Flag indicating whether dict with wghm input variables in xr.DataArray
-        format should be kept in memory.
+        Flag indicating whether variables that serve as input for the
+        WaterGAP Global Hydrology Model (WGHM) should be saved as NetCDF
+        files.
 
     Returns
     -------
     output_xr_data : dict
-        Dictionary of xarray datasets for selected variables.
+        Dictionary of xarray.DataArray objects for the selected variables and
+        WGHM input variables, organized by variable names as keys.
     """
     # first get xr data for netcdf output
     output_xr_data = {}
     for sector_name in output_sector_sel:
-        sector_obj = results_dict[sector_name]
+        sector_obj = gwswuse_results[sector_name]
         for var_name in output_vars_sel:
-            var_np_result = getattr(sector_obj, var_name, None)
-            if var_np_result is not None:
+            var_result_np = getattr(sector_obj, var_name, None)
+            if var_result_np is not None:
                 var_xr_result = \
-                    odp.write_to_xr_dataarray(var_np_result,
+                    odp.write_to_xr_dataarray(var_result_np,
                                               sector_obj.coords,
                                               var_name,
                                               sector_name)
@@ -189,10 +211,10 @@ def get_selected_var_results_as_xr(results_dict,
             # check if wghm input variables are not selected for output
             # then write wghm input variables here to xr_data
             if output_var_name not in output_xr_data:
-                sector_obj = results_dict[sector_name]
-                var_np_result = getattr(sector_obj, var_name, None)
+                sector_obj = gwswuse_results[sector_name]
+                var_result_np = getattr(sector_obj, var_name, None)
                 output_xr_data[output_var_name] = \
-                    odp.write_to_xr_dataarray(var_np_result,
+                    odp.write_to_xr_dataarray(var_result_np,
                                               sector_obj.coords,
                                               var_name,
                                               sector_name)
@@ -208,21 +230,15 @@ def get_selected_var_results_as_xr(results_dict,
 
 def save_datasets_to_netcdf(output_dir, output_xr_data):
     """
-    Save xr.Datasets from dictionary to NetCDF files.
+    Save xr.Datasets from a dictionary to NetCDF files.
 
     Parameters
     ----------
-    output_dir: str
-        The path to the directory where the NetCDF files
-        will be saved.
-    output_xr_data: dict
-        A dictionary where the values are xarray.Dataset
-        objects and the keys are used for naming the files.
-
-    Returns
-    -------
-    list
-        A list of paths to the created NetCDF files.
+    output_dir : str
+        The path to the directory where the NetCDF files will be saved.
+    output_xr_data : dict
+        A dictionary where the values are xarray.Dataset objects and the keys
+        are used for naming the files.
     """
     # Create the directory if it does not exist
     if not os.path.exists(output_dir):
@@ -238,23 +254,21 @@ def save_datasets_to_netcdf(output_dir, output_xr_data):
             dataset.to_netcdf(file_path, format='NETCDF4', encoding=encoding)
             saved_files.append(file_path)
             logger.debug(f"Saved NetCDF file: {key}.nc")
-    logger.info(f"Total NetCDF files created: {len(saved_files)}")
+    logger.info(f"Total NetCDF files created: {len(output_xr_data)}")
     logger.debug(f"NetCDF saving runtime: {time.time() - start_time} seconds")
 
-    return saved_files
 
-
-def save_global_annual_totals_to_excel(output_dir, var_dict):
+def save_global_annual_totals_to_excel(output_dir, global_annuals_dict):
     """
     Save global annual totals to .xlsx file with metadata in separate sheets.
 
     Parameters
     ----------
-    var_dict: dict
-        Dictionary of dataframes, where keys are variable names and values
-        are dataframes to be saved.
-    file_name: str
-        The name of the Excel file to save.
+    output_dir : str
+        The directory where the Excel file will be saved.
+    global_annuals_dict: dict
+         Dictionary of dataframes, where keys are variable names and values are
+         pandas.DataFrame objects containing global annual totals to be saved.
     """
     # Create metadata and variable metadata dataframes
     general_metadata_df, variable_metadata_df = \
@@ -274,7 +288,7 @@ def save_global_annual_totals_to_excel(output_dir, var_dict):
                                       index=False)
 
         # Save each dataframe in separate sheets
-        for variable_name, df in var_dict.items():
+        for variable_name, df in global_annuals_dict.items():
             df.to_excel(writer, sheet_name=variable_name)
     logger.debug(
         "Global annual totals are saved in global_annual_totals.xlsx.")

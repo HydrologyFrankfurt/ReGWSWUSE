@@ -25,49 +25,35 @@ class TotalSectorsSimulator():
     Attributes
     ----------
     consumptive_use_tot : numpy.ndarray
-        Array of consumptive of total water summed across all sectors.
-        (calculated)
+        Cross-sectors consumptive use of total water resources. (calculated)
     consumptive_use_gw : numpy.ndarray
-        Array of consumptive use of groundwater summed across all sectors.
-        (calculated)
+        Cross-sectors consumptive use of groundwater. (calculated)
     consumptive_use_sw : numpy.ndarray
-        Array of consumptive use of surface water summed across all sectors.
-        (calculated)
+        Cross-sectors consumptive water use of surface waters. (calculated)
     abstraction_tot : numpy.ndarray
-        Array of abstraction of total water summed across all sectors.
-        (calculated)
+        Cross-sectors abstraction of total water resources. (calculated)
     abstraction_gw : numpy.ndarray
-       Array of abstraction of groundwater summed across all sectors.
-        (calculated)
+        Cross-sectors abstraction of groundwater. (calculated)
     abstraction_sw : numpy.ndarray
-        Array of abstraction of surface water summed across all sectors.
-        (calculated)
+        Cross-sectors abstraction of surface waters. (calculated)
     return_flow_tot : numpy.ndarray
-        Array of total return flow of water use across all sectors.
-        (calculated)
+        Cross-sectors total return flow, calculated as the difference between
+        abstraction and consumptive use of total water resources. (calculated)
     return_flow_gw : numpy.ndarray
-        Array of return flow to groundwater of water use across all sectors.
-        (calculated)
+        Cross-sectors return flows into groundwater. (calculated)
     return_flow_sw : numpy.ndarray
-        Array of return flow to surface water of water use across all sectors.
-        (calculated)
+        Cross-sectors return flows into surface waters. (calculated)
     net_abstraction_gw : numpy.ndarray
-        Array of net abstraction of groundwater summed across all sectors.
-        (calculated)
+        Cross-sectors net abstraction of groundwater. (calculated)
     net_abstraction_sw : numpy.ndarray
-        Array of net abstraction of surface water summed across all sectors.
-        (calculated)
-    fraction_gw_use : None
-        Array of fraction of groundwater use across all sectors calculated as
-        quotient of consumptive_use_gw across all sectors and
-        consumptive_use_tot across all sectors.
-        (Calculated)
-    fraction_return_to_gw : None
-        Placeholder for the fraction of return flow to groundwater.
-        (input)
+        Cross-sectors net abstraction of surface waters. (calculated)
+    fraction_gw_use : numpy.ndarray or int
+        Cross-sectors relative fraction of groundwater use. (input)
+    fraction_return_gw : numpy.ndarray or int
+        Cross-sectors relative fraction of return flow to groundwater. (input)
     coords : xarray.Coordinates
-        Coordinates from the original dataset of the irrigation sector.
-        (input)
+        Coordinates from the original consumptive use dataset of the irrigation
+        sector. (input)
     """
 
     def __init__(self, irr, dom, man, tp, liv, config):
@@ -76,15 +62,15 @@ class TotalSectorsSimulator():
 
         Parameters
         ----------
-        irr : SectorData
+        irr : IrrigationSimulator
             Irrigation sector data.
-        dom : SectorData
+        dom : DomesticSimulator
             Domestic sector data.
-        man : SectorData
+        man : ManufacturingSimulator
             Manufacturing sector data.
-        tp : SectorData
+        tp : ThermalPowerSimulator
             Thermal power sector data.
-        liv : SectorData
+        liv : LivestockSimulator
             Livestock sector data.
         """
         self.name = 'cross-sector totals'

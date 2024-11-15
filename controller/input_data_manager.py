@@ -35,33 +35,34 @@ logger = get_logger(__name__)
 
 def input_data_manager(config):
     """
-    Manage the loading, checking and pre-processing of input data.
+    Manage loading, checking and pre-processing of input data from a config.
 
     Parameters
     ----------
-    input_data_path : str
-        Path to the folder containing the input NetCDF files.
-    convention_path : str
-        Path to the file containing conventions and sector requirements.
-    start_year : int
-        The start year for the data processing.
-    end_year : int
-        The end year for the data processing.
-    time_extend_mode : bool
-        If True, the data is extended to include years before the start year
-        and after the end year. If False, the data is trimmed to the specified
-        date range.
+    config : ConfigHandler
+        Singleton instance of ConfigHandler with configuration settings:
+        - input_data_path (str):
+            Path to the folder containing NetCDF files.
+        - convention_path (str):
+            Path to file with conventions and sector
+          requirements.
+        Additional settings are used within check_and_preprocess_input_data for
+        check and preprocess input data.
 
     Returns
     -------
-    datasets : dict
-        A dictionary of loaded NetCDF datasets.
+    preprocessed_data : dict
+        A nested dictionary with sectors as keys, and each sector containing
+        a dictionary of variables with checked & preprocessed xarray.Dataset
+        objects as values.
+    check_logs : dict
+        Dictionary containing the results of the validation process for the
+        input data.
+    datasets_dict : dict of dict of xarray.Dataset
+        A nested dictionary with sectors as keys, and each sector containing
+        a dictionary of variables with loaded xarray.Dataset objects as values.
     conventions : dict
-        The loaded conventions and sector requirements.
-    preprocessed_data : xr.DataArray or xr.Dataset
-        The preprocessed data.
-    check_results : dict
-        Results of the checks performed on the input data.
+        Loaded conventions and sector requirements.
 
     Notes
     -----
@@ -69,7 +70,8 @@ def input_data_manager(config):
     1. Loads conventions from the specified path.
     2. Loads input data from the specified folder according to sector
        requirements.
-    3. Checks and preprocesses the input data.
+    3. Checks and preprocesses the input data, using additional settings from
+       config.
     4. Handle the results of input data checks.
     """
     # Confirm paths for input data and conventions
@@ -114,7 +116,7 @@ def load_conventions(convention_path):
 
     Returns
     -------
-    dict
+    conventions : dict
         Dictionary of conventions loaded from the JSON file.
     """
     try:
@@ -141,11 +143,11 @@ def load_netcdf_files(input_data_path, sector_requirements):
 
     Returns
     -------
-    dict
+    datasets_dict : dict of dict of xarray.Dataset
         A nested dictionary with sectors as keys, and each sector containing
         a dictionary of variables with xarray.Dataset objects as values.
     """
-    datasets = {}
+    datasets_dict = {}
     # Loop through each sector in the input directory
     for sector in os.listdir(input_data_path):
         # Skip sectors not in the requirements dictionary
@@ -156,7 +158,7 @@ def load_netcdf_files(input_data_path, sector_requirements):
 
         # Check if the sector path is a directory
         if os.path.isdir(sector_path):
-            datasets[sector] = {}  # Initialize a dictionary for the sector
+            datasets_dict[sector] = {}  # Initialize a dictionary for sector
 
             # Loop through each variable in the sector directory
             for variable in os.listdir(sector_path):
@@ -176,34 +178,56 @@ def load_netcdf_files(input_data_path, sector_requirements):
                         dataset = xr.open_mfdataset(
                             netcdf_files, combine='by_coords'
                         )
-                        datasets[sector][variable] = dataset
+                        datasets_dict[sector][variable] = dataset
                         # Log a debug message for successful file loading
                         logger.debug(
                             f".nc-files loaded for '{sector}/{variable}'."
                         )
 
-    return datasets
+    return datasets_dict
 
 # =============================================================================
 # HANDLING FUNCTION FOR INPUT DATA CHECK RESULTS
 # =============================================================================
 
 
-def check_results_handling(check_results):
+def check_results_handling(check_logs):
     """
     Handle input data check results by logging and aborting if necessary.
 
     Parameters
     ----------
-    check_results : dict
-        Dictionary containing the results of dataset checks, categorized by
-        issue type.
+    check_logs : dict
+        Dictionary containing the results of the validation process for the
+        input data. Each key represents a category of potential data issues,
+        with values indicating the check results:
+
+        - "too_many_vars" (list): List of files where multiple variables were
+          detected, though only one was expected.
+        - "time_resolution_mismatch" (list): List of files with mismatched time
+          resolutions, compared to the expected configuration.
+        - "missing_time_coords" (list): List of files missing required time
+          coordinates.
+        - "missing_time_coverage" (list): List of files with incomplete time
+          coverage as per configuration.
+        - "extended_time_period" (list): List of files with extended time
+          coverage, which may compensate for missing time coverage.
+        - "unit_mismatch" (list): List of files where units do not match the
+          expected sector-specific units.
+        - "unknown_vars" (list): List of variables not recognized according to
+          reference standards in `input_data_convention.json`.
+        - "missing_unit" (list): List of variables lacking unit definitions,
+          which are required by sector specifications.
+        - "lat_lon_consistency" (bool): Indicates whether spatial coordinates
+          are consistent across all input data (True if consistent, False
+          otherwise).
+
     """
     critical_error_found = False
 
     # Handle critical errors
     # Process each category in the check results
-    for category, result in check_results.items():
+    for category, result in check_logs.items():
         if isinstance(result, list) and result:  # Only process non-empty lists
             issues_list = "\n   - " + "\n   - ".join(result)
             if category == "too_many_vars":
@@ -218,9 +242,9 @@ def check_results_handling(check_results):
                 critical_error_found = True
             elif category == "missing_time_coverage":
                 missing_paths = \
-                    set(check_results["missing_time_coverage"])
+                    set(check_logs["missing_time_coverage"])
                 extended_paths = \
-                    set(check_results["extended_time_period"])
+                    set(check_logs["extended_time_period"])
                 unmatched_paths = missing_paths - extended_paths
                 if not unmatched_paths:
                     extended_list = \

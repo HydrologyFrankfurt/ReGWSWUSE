@@ -25,76 +25,60 @@ class IrrigationSimulator:
     Attributes
     ----------
     consumptive_use_tot : numpy.ndarray
-        Array of monthly consumptive use of total water in irrigation sector
-        converted to daily values and adjusted for the simulation. Originally
-        read as xr.DataArray.
-        (input and adjusted)
+        Irrigation-specific consumptive use of total water resources.
+        Originally read as xr.DataArray. (input)
     consumptive_use_gw : numpy.ndarray
-        Array of consumptive use of groundwater in irrigation sector.
-        (calculated)
+        Irrigation-specific consumptive use of groundwater. (calculated)
     consumptive_use_sw : numpy.ndarray
-        Array of consumptive use of surface water in irrigation sector.
+        Irrigation-specific consumptive water use of surface waters.
         (calculated)
     abstraction_tot : numpy.ndarray
-        Array of total water abstraction in irrigation sector.
-        (calculated)
+        Irrigation-specific abstraction of total water resources. (calculated)
     abstraction_gw : numpy.ndarray
-        Array of groundwater abstraction in irrigation sector.
-        (calculated)
+        Irrigation-specific abstraction of groundwater. (calculated)
     abstraction_sw : numpy.ndarray
-        Array of surface water abstraction in irrigation sector.
-        (calculated)
+        Irrigation-specific abstraction of surface waters. (calculated)
     return_flow_tot : numpy.ndarray
-        Array of total return flow of water use in irrigation sector.
+        Irrigation-specific total return flow, calculated as the difference
+        between abstraction and consumptive use of total water resources.
         (calculated)
     return_flow_gw : numpy.ndarray
-        Array of return flow to groundwater of water use in irrigation sector.
-        (calculated)
+        Irrigation-specific return flows into groundwater. (calculated)
     return_flow_sw : numpy.ndarray
-        Array of return flow to surface water of water use in irrigation
-        sector.
-        (calculated)
+        Irrigation-specific return flows into surface waters. (calculated)
     net_abstraction_gw : numpy.ndarray
-        Array of net abstraction of groundwater in irrigation sector.
-        (calculated)
+        Irrigation-specific net abstraction of groundwater. (calculated)
     net_abstraction_sw : numpy.ndarray
-        Array of net abstraction of surface water in irrigation sector.
-        (calculated)
+        Irrigation-specific net abstraction of surface waters. (calculated)
     fraction_gw_use : numpy.ndarray or int
-        Array of fractions of consumptive use from groundwater in irrigation
-        sector or 0 if not provided. Originally read as xr.DataArray.
-        (input)
+        Irrigation-specific relative fraction of groundwater use. Originally
+        provided as xr.DataArray or set to 0. (input)
     fraction_return_gw : numpy.ndarray or int
-        Array of fractions of return flow to groundwater in irrigation sector
-        or 0 if not provided. Originally read as xr.DataArray.
-        (input)
+        Irrigation-specific relative fraction of return flow to groundwater.
+        Originally provided as xr.DataArray or set to 0. (input)
     gwd_mask : numpy.ndarray
-        Groundwater depletion mask array for the irrigation sector.
-        (input)
+        Grid mask for groundwater depletion larger than 5mm. (input)
     abstraction_irr_part_mask : numpy.ndarray
-        Abstraction irrigation part mask array for the irrigation sector.
-        (input)
+        Grid mask for the relative part of total water withdrawals by the
+        irrigation sector larger than 5%.(input)
     deficit_irrigation_location : numpy.ndarray
-        Locations with irrigation deficits for the irrigation sector.
-        (calculated)
+        Grid representing deficit irrigation conditions, where cells meeting
+        criteria have the specified deficit irrigation factor. (calculated)
     fraction_aai_aei : numpy.ndarray
-        Yearly country-specific fraction of area actually irrigated (aai) and
-        area equipped for irrigation (aei).
-        (input)
+        Fraction of areas actually irrigated to areas eqipped for irrgation on
+        country level. (input)
     time_factor_aai : numpy.ndarray
-        Time factor array for the irrigation sector.
-        (input)
+        Temporal development factor of national areas actually irrigated for
+        years 2016 till 2020 to reference year 2015. (input)
     irrigation_efficiency_sw : numpy.ndarray
-        Array for irrigation efficiency with surface water abstraction
-        infrastructure.
+        Irrigation efficiency for surface water abstraction infrastructure.
         (input)
     irrigation_efficiency_gw : numpy.ndarray
-        Array for irrigation efficiency with groundwater abstraction
-        infrastructure.
+        Irrigation efficiency for groundwater abstraction infrastructure.
         (calculated)
     coords : xarray.Coordinates
-        Coordinates from the original dataset.
-        (input)
+        Coordinates of the original dataset for irrigation-specific consumptive
+        use of total water resources. (input)
     """
 
     # pylint: disable=too-few-public-methods, too-many-instance-attributes
@@ -267,7 +251,7 @@ class IrrigationSimulator:
                 self.coords_idx, self.unit, self.csp_flag
                 )
 
-        # Calc consumptive use from groundwater and surface water
+        # Calc consumptive use of groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(
                 self.consumptive_use_tot,
@@ -287,7 +271,7 @@ class IrrigationSimulator:
                                         self.consumptive_use_tot,
                                         self.fraction_return_gw)
 
-        # Calc net abstractions from groundwater and surface water
+        # Calc net abstractions of groundwater and surface water
         self.net_abstraction_gw, self.net_abstraction_sw = \
             me.calc_net_abstraction_gwsw(self.abstraction_gw,
                                          self.return_flow_gw,

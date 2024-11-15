@@ -10,8 +10,7 @@
 # =============================================================================
 """GWSWUSE input data check & preprocessing module for input_data_manager."""
 
-import os
-
+from gwswuse_logger import get_logger
 from controller.check_functions import (
     check_dataset_structure_metadata, check_spatial_coords, check_time_coords)
 
@@ -21,12 +20,9 @@ from controller.preprocessing_functions import (
     )
 
 # =============================================================================
-# Get module name and remove the .py extension
 # Module name is passed to logger
 # =============================================================================
-modname = os.path.basename(__file__)
-modname = modname.split('.')[0]
-
+logger = get_logger(__name__)
 
 # =============================================================
 # CHECK AND PREPROCESSING MAIN ALGORITHMS
@@ -34,34 +30,31 @@ modname = modname.split('.')[0]
 
 
 def check_and_preprocess_input_data(
-        datasets, conventions, config
+        datasets_dict, conventions, config
         ):
     """
     Validate and preprocess input datasets based on input conventions.
 
     Parameters
     ----------
-    datasets : dict
-        A nested dictionary with sectors as keys and each sector containing
-        a dictionary of variables with xarray.Dataset objects as values.
+    datasets_dict : dict of dict of xarray.Dataset
+        A nested dictionary with sectors as keys, and each sector containing
+        a dictionary of variables with loaded xarray.Dataset objects as values.
     conventions : dict
-        A dictionary containing conventions and sector requirements.
-    start_year : int
-        The start year for the data processing.
-    end_year : int
-        The end year for the data processing.
-    time_extend_mode : bool
-        If True, the data is extended to include years before the start year
-        and after the end year. If False, the data is trimmed to the specified
-        date range.
+        Dictionary containing conventions and sector requirements, including
+        reference names, time-variant variables, and sector-specific details,
+        some of which serve as references for the validation process.
+    config : ConfigHandler
+        Configuration object containing settings such as start_year, end_year,
+        time_extend_mode and more for data processing.
 
     Returns
     -------
     preprocessed_datasets : dict
-        A dictionary of preprocessed datasets by sector and variable.
-    validation_results : dict
-        A dictionary containing results of the validation process of the input
-        data.
+        Dictionary of preprocessed datasets, organized by sector and variable.
+    check_logs : dict
+        Dictionary containing the results of the validation process for the
+        input data.
     """
     # Initialize conventions
     reference_names = conventions['reference_names']
@@ -69,15 +62,15 @@ def check_and_preprocess_input_data(
     sector_requirements = conventions['sector_requirements']
 
     # Initialize logs for storing information about incorrect datasets
-    check_logs = initialize_logs()
+    check_logs = initialize_check_logs()
 
-    datasets = preprocess_input_data_based_on_config(
-        datasets, config)
+    datasets_dict = preprocess_input_data_based_on_config(
+        datasets_dict, config)
     # Initialize the dictionary for preprocessed datasets
     preprocessed_datasets = {}
 
     # Validate and process each dataset in the nested dictionary structure
-    for sector, variables in datasets.items():
+    for sector, variables in datasets_dict.items():
         sector_info = sector_requirements.get(sector, {})
         unit_vars = sector_info.get("unit_vars", [])
         expected_units = sector_info.get("expected_units", [])
@@ -91,7 +84,7 @@ def check_and_preprocess_input_data(
 
         for variable, dataset in variables.items():
             log_id = f"{sector}/{variable}"
-
+            logger.debug(log_id)
             # Set all dataset data to float64
             dataset = dataset.astype('float64')
 
@@ -131,7 +124,7 @@ def check_and_preprocess_input_data(
 
 
 def check_preprocess_time_variant_input(
-        dataset, logs, log_id, time_freq, config):
+        dataset, check_logs, log_id, time_freq, config):
     """
     Validate and preprocess time-variant input data for a given period.
 
@@ -144,107 +137,142 @@ def check_preprocess_time_variant_input(
     ----------
     dataset : xarray.Dataset
         The dataset containing time-variant data to validate and preprocess.
-    start_year : int
-        The start year of the required time period.
-    end_year : int
-        The end year of the required time period.
     time_freq : str
-        The expected time frequency (e.g., 'D' for daily, 'M' for monthly).
-    time_extend_mode : bool
-        Flag to enable extending the dataset if it does not cover the full
-        period.
+        The expected time frequency, either 'monthly' for monthly data or
+        'yearly' for yearly data.
     log_id : str
         A unique identifier for logging the dataset's validation results.
-    logs : dict
+    check_logs : dict
         A dictionary used for tracking validation results and preprocessing
         steps.
+    config : ConfigHandler
+        Configuration object containing settings, including `start_year` for
+        the start of the required time period, `end_year` for the end year,
+        and `time_extend_mode` to enable dataset extension if it does not
+        cover the full period.
 
     Returns
     -------
-    dataset : xarray.Dataset)
+    dataset : xarray.Dataset
         The preprocessed dataset, either extended or trimmed.
-    logs : dict
-        The updated logs reflecting the validation and preprocessing results.
+    check_logs : dict
+        The updated check_logs reflecting the validation and preprocessing
+        results.
     """
     start_year = config.start_year
     end_year = config.end_year
     time_extend_mode = config.time_extend_mode
     # Step 1: (Validation) Validate time coverage and resolution and log
-    logs = check_time_coords(
-        dataset, time_freq, start_year, end_year, log_id, logs)
+    check_logs = check_time_coords(
+        dataset, time_freq, start_year, end_year, log_id, check_logs)
     # Step 2a: Handle dataset depending on whether it covers the period
-    if log_id in logs["missing_time_coverage"] and time_extend_mode:
+    if log_id in check_logs["missing_time_coverage"] and time_extend_mode:
         # 2a: (Preprocessing) Extend dataset if time_extend_mode is enabled
         dataset = extend_xr_data(dataset, start_year, end_year, time_freq)
-        logs["extended_time_period"].append(log_id)
+        check_logs["extended_time_period"].append(log_id)
     # Step 2b: (Preprocessing) Trim dataset if it covers the required period
     else:
         dataset = trim_xr_data(dataset, start_year, end_year)
 
-    return dataset, logs
+    return dataset, check_logs
 
 
-def preprocess_input_data_based_on_config(datasets, config):
+def preprocess_input_data_based_on_config(datasets_dict, config):
     """
-    Preprocess the input datasets based on configuration settings.
+    Preprocess the input datasets_dict based on configuration settings.
+
+    This function modifies the input datasets according to configuration
+    options related to irrigation and time extensions, controlling which
+    variables are retained or extended.
 
     Parameters
     ----------
-    datasets : dict
+    datasets_dict : dict
         A nested dictionary with sectors as keys, each containing a dictionary
         of variables with xarray.Dataset objects as values.
     config : object
-        Configuration object with various flags and parameters controlling
-        the preprocessing.
+        Configuration object with flags and parameters for preprocessing,
+        including settings like `start_year`,`end_year`,
+        `deficit_irrigation_mode`, `irrigation_input_based_on_aei` and
+        `correct_irrigation_t_aai_mode`.
 
     Returns
     -------
-    dict
+    datasets_dict : dict
         The updated dictionary of datasets after preprocessing.
     """
     # 1. Remove irrigation data if deficit irrigation mode is disabled
     if not config.deficit_irrigation_mode:
-        datasets['irrigation'].pop('gwd_mask', None)
-        datasets['irrigation'].pop('abstraction_irr_part_mask', None)
+        datasets_dict['irrigation'].pop('gwd_mask', None)
+        datasets_dict['irrigation'].pop('abstraction_irr_part_mask', None)
 
     # 2. Process irrigation input based on AEI settings
     if config.irrigation_input_based_on_aei:
-        datasets['irrigation'].pop('fraction_aai_aei', None)
+        datasets_dict['irrigation'].pop('fraction_aai_aei', None)
     else:
         # Extend 'fraction_aai_aei' data if irrigation input is based on AEI
-        fraction_aai_aei = datasets['irrigation']['fraction_aai_aei']
+        fraction_aai_aei = datasets_dict['irrigation']['fraction_aai_aei']
         if fraction_aai_aei:
             fraction_aai_aei = extend_xr_data(
                 fraction_aai_aei, config.start_year, config.end_year, 'monthly'
                 )
-            datasets['irrigation']['fraction_aai_aei'] = fraction_aai_aei
+            datasets_dict['irrigation']['fraction_aai_aei'] = fraction_aai_aei
 
     # 3. Process time factor data for irrigation if enabled
     if not config.correct_irrigation_t_aai_mode:
-        datasets['irrigation'].pop('time_factor_aai', None)
+        datasets_dict['irrigation'].pop('time_factor_aai', None)
     else:
         # Extend the 'time_factor_aai'
-        time_factor_aai = datasets['irrigation']['time_factor_aai']
+        time_factor_aai = datasets_dict['irrigation']['time_factor_aai']
         if time_factor_aai:
             time_factor_aai = extend_xr_data(
                 time_factor_aai, config.start_year, config.end_year, 'monthly'
                 )
-            datasets['irrigation']['time_factor_aai'] = time_factor_aai
+            datasets_dict['irrigation']['time_factor_aai'] = time_factor_aai
 
-    return datasets
+    return datasets_dict
 
 # =============================================================
 # UTILITY FUNCTIONS
 # =============================================================
 
 
-def initialize_logs():
-    """Initialize logs for tracking validation issues with xarray datasets."""
+def initialize_check_logs():
+    """
+    Initialize logs for tracking validation issues with xarray datasets.
+
+    Returns
+    -------
+    dict
+        A dictionary initialized with keys for various validation checks,
+        categorized by issue type. Keys include:
+
+        - "too_many_vars" (list): Logs cases where multiple variables are
+          present, though only one was expected (decisive).
+        - "unknown_vars" (list): Logs variables that are not recognized
+          according to conventions (not decisive).
+        - "unit_mismatch" (list): Logs cases where variable units do not
+          match expected units (decisive).
+        - "missing_unit" (list): Logs variables missing unit definitions
+          (not decisive).
+        - "lat_lon_consistency" (bool): Tracks whether spatial coordinates
+          are consistent across datasets (decisive).
+        - "lat_lon_reference" (None): Reference coordinates for spatial
+          consistency check, used only within `check_spatial_coords`.
+        - "missing_time_coverage" (list): Logs datasets with incomplete time
+          coverage; decisive if `time_extend_mode` is disabled.
+        - "time_resolution_mismatch" (list): Logs datasets with time
+          resolution mismatches (decisive).
+        - "missing_time_coords" (list): Logs datasets missing required time
+          coordinates (decisive).
+        - "extended_time_period" (list): Logs datasets with extended time
+          coverage; used for informational purposes only.
+    """
     return {
         "too_many_vars": [],  # decisive
         "unknown_vars": [],  # not decisive
         "unit_mismatch": [],  # decisive
-        "missing_unit": [],  # decisive
+        "missing_unit": [],  # not decisive
         "lat_lon_consistency": True,  # decisive
         "lat_lon_reference": None,  # only needed for check_spatial_coords
         "missing_time_coverage": [],  # decisive, if time_extend_mode disabled

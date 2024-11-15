@@ -49,16 +49,16 @@ def calc_gwsw_water_use(use_tot, fraction_gw_use):
     ----------
     use_tot : numpy.ndarray
         Sector-specific water use variable (consumptive use or abstraction)
-        from total water resources.
+        for total water resources.
     fraction_gw_use : numpy.ndarray
         Sector-specific relative fraction of groundwater use.
 
     Returns
     -------
     use_gw : numpy.ndarray
-        Sector-specific consumptive use or abstraction from groundwater.
+        Sector-specific consumptive use or abstraction of groundwater.
     use_sw : numpy.ndarray
-       Sector-specific consumptive use or abstraction from surface water.
+       Sector-specific consumptive use or abstraction of surface waters.
 
     """
     use_gw = fraction_gw_use * use_tot
@@ -88,21 +88,21 @@ def calc_return_flow_totgwsw(abstraction_tot,
     Parameters
     ----------
     abstraction_tot : numpy.ndarray
-        Sector-specific water abstraction from total water resources.
+        Sector-specific abstraction of total water resources.
     consumptive_use_tot : numpy.ndarray
-        Sector-specific consumptive water use from total water resources.
+        Sector-specific consumptive use of total water resources.
     fraction_return_gw : numpy.ndarray or xarray
         Sector-specific relative fraction of return flow to groundwater.
 
     Returns
     -------
     return_flow_tot : numpy.ndarray
-        Total return flow from the sector, calculated as the difference
-        between withdrawal water use and consumptive water use.
+        Sector-specific total return flow, calculated as the difference between
+        abstraction and consumptive use of total water resources.
      return_flow_gw : numpy.ndarray or xarray
-         Sector-specific return flow to groundwater.
+         Sector-specific return flows into groundwater.
      return_flow_sw : numpy.ndarray
-         Sector-specific return flow to surface water.
+         Sector-specific return flows into surface waters.
     """
     # calculation of total return flow
     return_flow_tot = abstraction_tot - consumptive_use_tot
@@ -120,7 +120,7 @@ def calc_return_flow_totgwsw(abstraction_tot,
 def calc_net_abstraction_gwsw(abstraction_gw, return_flow_gw,
                               abstraction_sw, return_flow_sw):
     """
-    Calculate sector-specific net abstraction from gw and sw.
+    Calculate sector-specific net abstractions of gw and sw.
 
     The function is used for the following sectors:
         - Irrigation
@@ -134,18 +134,18 @@ def calc_net_abstraction_gwsw(abstraction_gw, return_flow_gw,
     abstraction_gw : numpy.ndarray
         Sector-specific abstraction of groundwater.
     return_flow_gw : numpy.ndarray
-        Sector-specific return flow to groundwater.
+        Sector-specific return flows into groundwater.
     abstraction_sw : numpy.ndarray
-        Sector-specific abstraction of surface water.
+        Sector-specific abstraction of surface waters.
     return_flow_sw : numpy.ndarray
-        Sector-specific return flow to surface water.
+        Sector-specific return flows into surface waters.
 
     Returns
     -------
     net_abstraction_gw : numpy.ndarray
         Sector-specific net abstraction of groundwater.
     net_abstraction_sw : numpy.ndarray
-        Sector-specific net abstraction of surface water.
+        Sector-specific net abstraction of surface waters.
 
     """
     # sector-specific net abstraction of groundwater
@@ -173,7 +173,7 @@ def set_irr_deficit_locations(gwd_mask,
 
     Create a NumPy array with a deficit irrigation factor based on the
     groundwater depletion (gwd_mask) larger than 5mm and the relative part
-    of total water withdrawals by the irrigation sector larger than 5%.
+    of total water abstractions by the irrigation sector larger than 5%.
 
     Parameters
     ----------
@@ -234,16 +234,17 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
     Parameters
     ----------
     irr_consumptive_use_tot : np.ndarray or xr.DataArray
-        The total consumptive use in irrigation of water prior to adjustment.
+        Irrigation-specific consumptive water uses of total water resources
+        prior to adjustment.
     deficit_irrigation_location : np.ndarray or xr.DataArray
         A factor or array of factors that reduce the consumptive use based on
-        deficit irrigation practices.
+        deficit irrigation conditions (gwd_mask & abstraction_irr_part_mask).
 
     Returns
     -------
     irr_deficit_consumptive_use_tot : np.ndarray or xr.DataArray
-        Irrigation consumptive use of water, taking into account deficit
-        irrigation locations.
+        Irrigation-specific consumptive water uses of total water resources,
+        taking into account deficit irrigation locations.
 
     """
     irr_deficit_consmptive_use_tot = \
@@ -258,32 +259,31 @@ def calc_irr_deficit_consumptive_use_tot(irr_consumptive_use_tot,
 
 @njit(cache=True)
 def calc_irr_consumptive_use_aai(
-        irr_consumptive_use_tot_input, fraction_aai_aei
+        irr_consumptive_use_tot_aei, fraction_aai_aei
         ):
     """
-    Calc total consumptive use for area, actually irrigated.
+    Calculte irrigation consumptive use for area, actually irrigated.
 
     The function is used for the following sectors:
         - Irrigation
 
     Parameters
     ----------
-    irr_consumptive_use_tot_input : numpy.ndarray
-        Total water consumptive use for irrigation, based on areas equipped for
-        irrigation (AEI).
+    irr_consumptive_use_tot_aei : numpy.ndarray
+        Irrigation-specific consumptive water uses of total water resources,
+        based on areas equipped for irrigation (AEI).
     fraction_aai_aei : numpy.ndarray
-        DESCRIPTION
+        Fraction of areas actually irrigated to areas eqipped for irrgation on
+        country level.
 
     Returns
     -------
     irr_consumptive_use_tot_aai : numpy.ndarray
-        Total water consumptive use for irrigation, based on areas actually
-        irrigated (AAI).
-
-
+        Irrigation-specific consumptive water uses of total water resources,
+        based on areas actually irrigated (AAI).
     """
     irr_consumptive_use_tot_aai = \
-        irr_consumptive_use_tot_input * fraction_aai_aei
+        irr_consumptive_use_tot_aei * fraction_aai_aei
 
     return irr_consumptive_use_tot_aai
 
@@ -305,19 +305,19 @@ def correct_irr_consumptive_use_by_t_aai(
     Parameters
     ----------
     irr_consumptive_use_tot : numpy.ndarray
-        Total water consumptive use for irrigation.
+        Irrigation-specific consumptive water uses of total water resources
+        prior to adjustment.
     time_factor_aai : numpy.ndarray
         Represents the development of country-specific AAI (Area Actually
         Irrigated) from 2016 onwards, relative to the reference year 2015. This
         factor is used to adjust the consumptive use values to account for
-        changes in irrigation practices or area actually irrigated over time.
+        changes area actually irrigated over time.
 
     Returns
     -------
     irr_consumptive_use_tot_t_aai : numpy.ndarray
-        Total water consumptive use for irrigation, corrected with
-        time_factor_aai.
-
+        Irrigation-specific consumptive water uses of total water resources,
+        corrected with time_factor_aai.
     """
     irr_consumptive_use_tot_correct_by_t_aai = \
         irr_consumptive_use_tot * time_factor_aai
@@ -340,7 +340,7 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
     Parameters
     ----------
     efficiency_sw : np.ndarray
-        The NumPy array of irrigation efficiency for surface water.
+        Irrigation efficiency for surface water abstraction infrastructure.
     threshold : float, optional
         The threshold at which groundwater irrigation efficiency will be
         adjusted. Default is 0.7..
@@ -353,9 +353,8 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
     Returns
     -------
     efficiency_gw : np.ndarray
-        The adjusted groundwater irrigation efficiency array, following the
-        rules set by the selected method.
-
+        Irrigation efficiency for groundwater abstraction infrastructure,
+        following the rules set by the selected method.
     """
     efficiency_gw = np.full_like(efficiency_sw, np.nan)
 
@@ -381,7 +380,7 @@ def set_irr_efficiency_gw(efficiency_sw, threshold=0.7, mode="enforce"):
 def calc_irr_abstraction_totgwsw(irr_consumptive_use_gw, irr_efficiency_gw,
                                  irr_consumptive_use_sw, irr_efficiency_sw):
     """
-    Calculate irrigation-specific abstraction in total and from gw and sw.
+    Calculate irrigation-specific abstraction in total and of gw and sw.
 
     The function is used for the following sectors:
         - Irrigation
@@ -389,22 +388,22 @@ def calc_irr_abstraction_totgwsw(irr_consumptive_use_gw, irr_efficiency_gw,
     Parameters
     ----------
     irr_consumptive_use_gw : numpy.ndarray
-        Irrigation-specific consumptive use from groundwater.
+        Irrigation-specific consumptive use of groundwater.
     irr_efficiency_gw : numpy.ndarray or float
-        Irrigation efficiency for groundwater.
-    irr_consumptive_use_gw : numpy.ndarray
-        Irrigation-specific consumptive water use from groundwater.
-    irr_efficiency_gw : numpy.ndarray or float
-        Irrigation efficiency for groundwater.
+        Irrigation efficiency for groundwater abstraction infrastructure.
+    irr_consumptive_use_sw : numpy.ndarray
+        Irrigation-specific consumptive water use of surface waters.
+    irr_efficiency_sw : numpy.ndarray or float
+        Irrigation efficiency for surface water abstraction infrastructure.
 
     Returns
     -------
     irr_abstraction_gw : numpy.ndarray
-        Irrigation-specific abstraction from groundwater.
+        Irrigation-specific abstraction of groundwater.
     irr_abstraction_sw : numpy.ndarray
-        Irrigation-specific abstraction from surface water.
+        Irrigation-specific abstraction of surface water.
     irr_abstraction_tot : numpy.ndarray
-        Irrigation-specific abstraction from total water resources.
+        Irrigation-specific abstraction of total water resources.
 
     """
     irr_abstraction_gw = irr_consumptive_use_gw / irr_efficiency_gw
@@ -435,13 +434,13 @@ def calc_cross_sector_totals(irr_monthly_m3_month,
     sectors (m³/year), converting the latter into monthly values.
 
     The volume-per-time variables for which the function is intended are:
-    - Consumptive use from groundwater (consumptive_use_gw), surface water
+    - Consumptive use of groundwater (consumptive_use_gw), surface water
       (consumptive_use_sw), or both (consumptive_use_tot).
-    - Water abstraction from groundwater (abstraction_gw), surface water
+    - Water abstraction of groundwater (abstraction_gw), surface water
       (abstraction_sw), or both (abstraction_tot).
     - Return flow (rf) to groundwater (return_flow_gw), surface water
       (return_flow_sw), or both (return_flow_tot).
-    - Net abstractions from groundwater (net_abstraction_gw) or surface water
+    - Net abstractions of groundwater (net_abstraction_gw) or surface water
       (net_abstraction_sw).
 
     Parameters
@@ -484,13 +483,13 @@ def calc_total_fractions(consumptive_use_gw, consumptive_use_tot,
     Parameters
     ----------
     consumptive_use_gw : numpy.ndarray
-        Consumptive water use from groundwater across all sectors.
+        Consumptive use of groundwater across all sectors.
     consumptive_use_tot : numpy.ndarray
-        Consumptive water use from total water resources across all sectors.
+        Consumptive use of total water resources across all sectors.
     return_flow_gw : numpy.ndarray or xarray
-        Return flow to groundwater across all sectors.
+        Return flows into groundwater across all sectors.
     return_flow_tot : numpy.ndarray
-        Total return flow from all sectors.
+        Total return flows across all sectors.
 
     Returns
     -------

@@ -15,25 +15,30 @@ import xarray as xr
 import pandas as pd
 import numpy as np
 
+
 # =============================================================
 # PREPROCESSING FUCNTIONS
 # =============================================================
-def ensure_correct_dimension_order(xr_data):
+def ensure_correct_dimension_order(data):
     """
     Ensure the dimensions of an xarray object are in the correct order.
 
+    This function checks and, if necessary, transposes the dimensions of the
+    input xarray object to follow the preferred order of ("time", "lat", "lon")
+    if "time" is present or ("lat", "lon") otherwise.
+
     Parameters
     ----------
-    xr_array : xarray.DataArray or xarray.Dataset
+    data : xarray.DataArray or xarray.Dataset
         The xarray object to check and transpose if necessary.
 
     Returns
     -------
-    xarray.DataArray or xarray.Dataset
+    data : xarray.DataArray or xarray.Dataset
         The xarray object with dimensions in the desired order.
     """
     # Get the current dimensions of the xarray object
-    current_dims = tuple(xr_data.dims)
+    current_dims = tuple(data.dims)
 
     # Check if 'time' is a dimension
     if 'time' in current_dims:
@@ -46,46 +51,47 @@ def ensure_correct_dimension_order(xr_data):
     # Check if current dimensions match the desired order
     if current_dims != desired_dims:
         # Transpose the xarray object to the desired order
-        xr_data = xr_data.transpose(*desired_dims)
+        data = data.transpose(*desired_dims)
 
     # Return the transposed xarray object
-    return xr_data
+    return data
 
 
-def sort_lat_desc_lon_asc_coords(xr_data):
+def sort_lat_desc_lon_asc_coords(data):
     """
     Sort xarray object latitude descending and longitude ascending.
 
     Parameters
     ----------
-    xr_data : xarray.DataArray or xarray.Dataset
+    data : xarray.DataArray or xarray.Dataset
         The xarray object whose 'lat' and 'lon' coordinates are to be sorted.
 
     Returns
     -------
-    xarray.DataArray or xarray.Dataset
+    sorted_lat_desc_lon_asc_data : xarray.DataArray or xarray.Dataset
         The xarray object with 'lat' coordinates sorted in descending order
-        and 'lon' coordinates sorted in ascending order.
+        and 'lon' coordinates sorted in ascending order, or the original object
+        if already sorted.
     """
-    if 'lat' not in xr_data.coords or 'lon' not in xr_data.coords:
-        raise ValueError("'lat' oder 'lon' Koordinaten fehlen im Dataset.")
+    if 'lat' not in data.coords or 'lon' not in data.coords:
+        raise ValueError("'lat' or 'lon' coords miss in dataset.")
 
     with dask.config.set(**{'array.slicing.split_large_chunks': True}):
-        sorted_lat_desc_xr_data = xr_data.sortby('lat', ascending=False)
+        sorted_lat_desc_data = data.sortby('lat', ascending=False)
 
-        sorted_lat_desc_lon_asc_xr_data = \
-            sorted_lat_desc_xr_data.sortby('lon', ascending=True)
+        sorted_lat_desc_lon_asc_data = \
+            sorted_lat_desc_data.sortby('lon', ascending=True)
 
-    return sorted_lat_desc_lon_asc_xr_data
+    return sorted_lat_desc_lon_asc_data
 
 
-def trim_xr_data(xr_data, start_year, end_year):
+def trim_xr_data(data, start_year, end_year):
     """
     Trim DataArray to cover the specified period.
 
     Parameters
     ----------
-    xr_data : xr.DataArray
+    data : xr.DataArray
         The original DataArray with time values.
     start_year : int
         The year from which the trimming begins.
@@ -94,174 +100,186 @@ def trim_xr_data(xr_data, start_year, end_year):
 
     Returns
     -------
-    xr.DataArray
+    trimmed_data : xr.DataArray
         The trimmed DataArray.
     """
-    return xr_data.sel(time=slice(str(start_year), str(end_year)))
+    trimmed_data = data.sel(time=slice(str(start_year), str(end_year)))
+    return trimmed_data
 
 
-def extend_xr_data(xr_data, start_year, end_year, time_freq):
+def extend_xr_data(data, start_year, end_year, time_freq):
     """
     Extend DataArray or Dataset to cover the specified period.
 
     Parameters
     ----------
-    xr_data : xr.DataArray or xr.Dataset
+    data : xr.DataArray or xr.Dataset
         The original DataArray or Dataset with time values.
     start_year : int
         The year from which the extension begins.
     end_year : int
         The year until which the extension continues.
     time_freq : str
-        The frequency of the adjusted time coordinates, either 'MS' for
-        monthly or 'YS' for yearly.
+        The frequency of the adjusted time coordinates, either 'monthly' or
+        'yearly', corresponding to 'MS' or 'YS'.
 
     Returns
     -------
-    xr.DataArray or xr.Dataset
+    extended_data : xr.DataArray or xr.Dataset
         The extended DataArray or Dataset.
     """
-    xr_data_time = xr_data.coords['time']
+    original_time = data.coords['time']
     start_date, end_date = f'{start_year}-01-01', f'{end_year}-12-31'
     freq = 'MS' if time_freq == 'monthly' else 'YS'
-    simulation_time = pd.date_range(start=start_date, end=end_date, freq=freq)
+    target_time = pd.date_range(start=start_date, end=end_date, freq=freq)
 
-    xr_extended_data = initialize_extended_data(xr_data, simulation_time)
+    extended_data = initialize_extended_data(data, target_time)
 
     number_time_slices = 12 if freq == 'MS' else 1
 
-    xr_extended_data = append_data_to_start(
-        xr_data, xr_extended_data, simulation_time, number_time_slices
+    extended_data = append_data_to_start(
+        data, extended_data, target_time, number_time_slices
         )
-    xr_extended_data = append_data_to_end(
-        xr_data, xr_extended_data, simulation_time, number_time_slices
+    extended_data = append_data_to_end(
+        data, extended_data, target_time, number_time_slices
         )
-    xr_extended_data = insert_original_data(xr_data,
-                                            xr_extended_data,
-                                            xr_data_time)
+    extended_data = insert_original_data(data, extended_data, original_time)
 
-    return xr_extended_data
+    return extended_data
 
 
-def initialize_extended_data(xr_data, simulation_time):
+def initialize_extended_data(data, target_time):
     """
-    Initialize an extended DataArray or Dataset to match the simulation time.
+    Initialize an extended DataArray or Dataset to match the target time.
 
     Parameters
     ----------
-    xr_data : xr.DataArray or xr.Dataset
+    data : xr.DataArray or xr.Dataset
         The original DataArray or Dataset.
-    simulation_time : pd.DatetimeIndex
+    target_time : pd.DatetimeIndex
         The time coordinates for the extended DataArray or Dataset.
 
     Returns
     -------
-    xr.DataArray or xr.Dataset
+    extended_data : xr.DataArray or xr.Dataset
         The initialized extended DataArray or Dataset.
     """
-    if isinstance(xr_data, xr.DataArray):
-        xr_extended_data = xr.DataArray(
-            np.empty((len(simulation_time), *xr_data.shape[1:])),
-            coords=[simulation_time, *list(xr_data.coords.values())[1:]],
-            dims=xr_data.dims
+    if isinstance(data, xr.DataArray):
+        extended_data = xr.DataArray(
+            np.empty((len(target_time), *data.shape[1:])),
+            coords=[target_time, *list(data.coords.values())[1:]],
+            dims=data.dims
         )
-    elif isinstance(xr_data, xr.Dataset):
-        xr_extended_data = xr.Dataset(
-            {var: (data.dims, np.empty((len(simulation_time), *data.shape[1:])))
-             for var, data in xr_data.data_vars.items()},
-            coords={coord: ([coord], simulation_time) if coord == 'time' else
+    elif isinstance(data, xr.Dataset):
+        extended_data = xr.Dataset(
+            {var: (data.dims, np.empty((len(target_time), *data.shape[1:])))
+             for var, data in data.data_vars.items()},
+            coords={coord: ([coord], target_time) if coord == 'time' else
                     (coord, data.values)
-                    for coord, data in xr_data.coords.items()}
+                    for coord, data in data.coords.items()}
         )
-    return xr_extended_data
+    return extended_data
 
 
-def append_data_to_start(
-        xr_data, xr_extended_data, simulation_time, number_time_slices
-        ):
+def append_data_to_start(data, extended_data, target_time, number_time_slices):
     """
     Append data to the start of the extended DataArray or Dataset.
 
     Parameters
     ----------
-    xr_data : xr.DataArray or xr.Dataset
+    data : xr.DataArray or xr.Dataset
         The original DataArray or Dataset.
-    xr_extended_data : xr.DataArray or xr.Dataset
+    extended_data : xr.DataArray or xr.Dataset
         The extended DataArray or Dataset being built.
-    simulation_time : pd.DatetimeIndex
+    target_time : pd.DatetimeIndex
         The time coordinates for the extended DataArray or Dataset.
     number_time_slices : int
         The number of time slices to append at each step.
+
+    Returns
+    -------
+    extended_data : xr.DataArray or xr.Dataset
+        The extended DataArray or Dataset after data has been appended to the
+        start.
     """
-    for i in range(0, len(simulation_time), number_time_slices):
-        if simulation_time[i] >= xr_data.coords['time'][0]:
+    for i in range(0, len(target_time), number_time_slices):
+        if target_time[i] >= data.coords['time'][0]:
             break
-        if isinstance(xr_data, xr.DataArray):
-            xr_extended_data[i:i+number_time_slices] = (
-                xr_data.isel(time=slice(0, number_time_slices)).values
+        if isinstance(data, xr.DataArray):
+            extended_data[i:i+number_time_slices] = (
+                data.isel(time=slice(0, number_time_slices)).values
             )
-        elif isinstance(xr_data, xr.Dataset):
-            for var in xr_data.data_vars:
-                xr_extended_data[var][i:i+number_time_slices] = (
-                    xr_data[var].isel(time=slice(0, number_time_slices)).values
+        elif isinstance(data, xr.Dataset):
+            for var in data.data_vars:
+                extended_data[var][i:i+number_time_slices] = (
+                    data[var].isel(time=slice(0, number_time_slices)).values
                 )
-    return xr_extended_data
+    return extended_data
 
 
-def append_data_to_end(
-        xr_data, xr_extended_data, simulation_time, number_time_slices
-        ):
+def append_data_to_end(data, extended_data, target_time, number_time_slices):
     """
     Append data to the end of the extended DataArray or Dataset.
 
     Parameters
     ----------
-    xr_data : xr.DataArray or xr.Dataset
+    data : xr.DataArray or xr.Dataset
         The original DataArray or Dataset.
-    xr_extended_data : xr.DataArray or xr.Dataset
+    extended_data : xr.DataArray or xr.Dataset
         The extended DataArray or Dataset being built.
-    simulation_time : pd.DatetimeIndex
+    target_time : pd.DatetimeIndex
         The time coordinates for the extended DataArray or Dataset.
     number_time_slices : int
         The number of time slices to append at each step.
+
+    Returns
+    -------
+    extended_data : xr.DataArray or xr.Dataset
+        The extended DataArray or Dataset after data has been appended to the
+        end.
     """
-    for i in range(len(simulation_time) - number_time_slices, -1,
+    for i in range(len(target_time) - number_time_slices, -1,
                    -number_time_slices):
-        if simulation_time[i] <= xr_data.coords['time'][-1]:
+        if target_time[i] <= data.coords['time'][-1]:
             break
-        if isinstance(xr_data, xr.DataArray):
-            xr_extended_data[i:i+number_time_slices] = (
-                xr_data.isel(time=slice(-number_time_slices, None)).values
+        if isinstance(data, xr.DataArray):
+            extended_data[i:i+number_time_slices] = (
+                data.isel(time=slice(-number_time_slices, None)).values
             )
-        elif isinstance(xr_data, xr.Dataset):
-            for var in xr_data.data_vars:
-                xr_extended_data[var][i:i+number_time_slices] = (
-                    xr_data[var].isel(time=slice(-number_time_slices, None)
-                                      ).values)
+        elif isinstance(data, xr.Dataset):
+            for var in data.data_vars:
+                extended_data[var][i:i+number_time_slices] = (
+                    data[var].isel(time=slice(-number_time_slices, None)
+                                   ).values)
 
-    return xr_extended_data
+    return extended_data
 
 
-def insert_original_data(xr_data, xr_extended_data, xr_data_time):
+def insert_original_data(data, extended_data, original_time):
     """
     Insert the original data into the extended DataArray or Dataset.
 
     Parameters
     ----------
-    xr_data : xr.DataArray or xr.Dataset
+    data : xr.DataArray or xr.Dataset
         The original DataArray or Dataset.
-    xr_extended_data : xr.DataArray or xr.Dataset
+    extended_data : xr.DataArray or xr.Dataset
         The extended DataArray or Dataset being built.
-    xr_data_time : xr.DataArray
+    original_time : xr.DataArray
         The time coordinates of the original DataArray or Dataset.
-    """
-    original_time_index = xr_extended_data.time.to_index().get_indexer(
-        xr_data_time.to_index()
-    )
-    if isinstance(xr_data, xr.DataArray):
-        xr_extended_data[original_time_index] = xr_data.values
-    elif isinstance(xr_data, xr.Dataset):
-        for var in xr_data.data_vars:
-            xr_extended_data[var][original_time_index] = xr_data[var].values
 
-    return xr_extended_data
+    Returns
+    -------
+    extended_data : xr.DataArray or xr.Dataset
+        The extended DataArray or Dataset with original data inserted.
+    """
+    original_time_index = extended_data.time.to_index().get_indexer(
+        original_time.to_index()
+    )
+    if isinstance(data, xr.DataArray):
+        extended_data[original_time_index] = data.values
+    elif isinstance(data, xr.Dataset):
+        for var in data.data_vars:
+            extended_data[var][original_time_index] = data[var].values
+
+    return extended_data

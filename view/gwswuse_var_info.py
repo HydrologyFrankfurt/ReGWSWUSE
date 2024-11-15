@@ -634,15 +634,19 @@ modelvars = {
         'standard name': 'fraction_aai_aei',
         'long_name': (
             'Fraction of areas actually irrigated to areas eqipped for '
-            'irrgation'),
+            'irrgation on country level'),
         'unit': '-'
         },
     'time_factor_aai': {
         'standard_name': 'time_factor_aai',
         'long_name': (
             'Temporal development factor of national areas actually irrigated '
-            'for years 2016 till 2020 to reference year 2015.'
-            ),
+            'for years 2016 till 2020 to reference year 2015.'),
+        'description': (
+            'Represents the development of country-specific AAI (Area Actually'
+            'Irrigated) from 2016 onwards, relative to the reference year '
+            '2015. This factor is used to adjust the consumptive use values '
+            'to account for changes area actually irrigated over time.'),
         'unit': '-'
         }
     }

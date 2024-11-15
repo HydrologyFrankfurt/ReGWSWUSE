@@ -25,54 +25,40 @@ class DomesticSimulator:
     Attributes
     ----------
     consumptive_use_tot : numpy.ndarray
-        Array of yearly consumptive use of total water in domestic sector
-        converted to daily values. Originally read as xr.DataArray.
-        (input)
+        Domestic-specific consumptive use of total water resources. Originally
+        read as xr.DataArray. (input)
     consumptive_use_gw : numpy.ndarray
-        Array of consumptive use of groundwater in domestic sector.
-        (calculated)
+        Domestic-specific consumptive use of groundwater. (calculated)
     consumptive_use_sw : numpy.ndarray
-        Array of consumptive use of surface water in domestic sector.
-        (calculated)
+        Domestic-specific consumptive water use of surface waters. (calculated)
     abstraction_tot : numpy.ndarray
-        Array of yearly abstraction of total water in domestic sector converted
-        to daily values. Originally read as xr.DataArray.
-        (input)
-    abstraction_tot : numpy.ndarray
-        Array of total water abstraction in domestic sector.
-        (calculated)
+        Domestic-specific abstraction of total water resources. Originally read
+        as xr.DataArray. (input)
     abstraction_gw : numpy.ndarray
-        Array of groundwater abstraction in domestic sector.
-        (calculated)
+        Domestic-specific abstraction of groundwater. (calculated)
     abstraction_sw : numpy.ndarray
-        Array of surface water abstraction in domestic sector.
-        (calculated)
+        Domestic-specific abstraction of surface waters. (calculated)
     return_flow_tot : numpy.ndarray
-        Array of total return flow of water use in domestic sector.
+        Domestic-specific total return flow, calculated as the difference
+        between abstraction and consumptive use of total water resources.
         (calculated)
     return_flow_gw : numpy.ndarray
-        Array of return flow to groundwater of water use in domestic sector.
-        (calculated)
+        Domestic-specific return flows into groundwater. (calculated)
     return_flow_sw : numpy.ndarray
-        Array of return flow to surface water of water use in domestic sector.
-        (calculated)
+        Domestic-specific return flows into surface waters. (calculated)
     net_abstraction_gw : numpy.ndarray
-        Array of net abstraction of groundwater in domestic sector.
-        (calculated)
+        Domestic-specific net abstraction of groundwater. (calculated)
     net_abstraction_sw : numpy.ndarray
-        Array of net abstraction of surface water in domestic sector.
-        (calculated)
+        Domestic-specific net abstraction of surface waters. (calculated)
     fraction_gw_use : numpy.ndarray or int
-        Array of fractions of consumptive use from groundwater in domestic
-        sector or 0 if not provided. Originally as xr.DataArray.
-        (input)
+        Domestic-specific relative fraction of groundwater use. Originally
+        provided as xr.DataArray or set to 0. (input)
     fraction_return_gw : numpy.ndarray or int
-        Array of fractions of return flow to groundwater in domestic sector or
-        0 if not provided. Originally read as xr.DataArray.
-        (input)
+        Domestic-specific relative fraction of return flow to groundwater.
+        Originally provided as xr.DataArray or set to 0. (input)
     coords : xarray.Coordinates
-        Coordinates from the original dataset.
-        (input)
+        Coordinates of the original dataset for domestic-specific consumptive
+        use of total water resources. (input)
     """
 
     def __init__(self, dom_data, config):
@@ -132,12 +118,12 @@ class DomesticSimulator:
 
     def simulate_domestic(self):
         """Run domestic simulation with provided data and model equations."""
-        # Calc consumptive use from groundwater and surface water
+        # Calc consumptive use of groundwater and surface water
         self.consumptive_use_gw, self.consumptive_use_sw = \
             me.calc_gwsw_water_use(self.consumptive_use_tot,
                                    self.fraction_gw_use)
 
-        # Calc abstraction from groundwater and surface water
+        # Calc abstraction of groundwater and surface water
         self.abstraction_gw, self.abstraction_sw = \
             me.calc_gwsw_water_use(self.abstraction_tot,
                                    self.fraction_gw_use)
@@ -148,7 +134,7 @@ class DomesticSimulator:
                                         self.consumptive_use_tot,
                                         self.fraction_return_gw)
 
-        # Calc net abstractions from groundwater and surface water
+        # Calc net abstractions of groundwater and surface water
         self.net_abstraction_gw, self.net_abstraction_sw = \
             me.calc_net_abstraction_gwsw(self.abstraction_gw,
                                          self.return_flow_gw,
