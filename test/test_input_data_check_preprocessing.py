@@ -1,12 +1,26 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# This file is part of WaterGAP.
+
+# WaterGAP is an opensource software which computes water flows and storages as
+# well as water withdrawals and consumptive uses on all continents.
+
+# You should have received a copy of the LGPLv3 License along with WaterGAP.
+# if not see <https://www.gnu.org/licenses/lgpl-3.0>
+# =============================================================================
+"""test input_data_check_preprocessing.py"""
+
 import unittest
 import xarray as xr
 import numpy as np
 import pandas as pd
-from controller.input_data_check_preprocessing import (
-    check_and_preprocess_input_data, initialize_logs)
+from controller.input_data_check_preprocessing import \
+    check_and_preprocess_input_data
 
 
 class Config:
+    """Init config for test input_data_check_preprocessing"""
+
     def __init__(self):
         self.start_year = 2000
         self.end_year = 2005
@@ -16,7 +30,9 @@ class Config:
         self.correct_irrigation_t_aai_mode = True
 
 
-class TestValidationPreprocessing(unittest.TestCase):
+class TestCheckAndPreprocessing(unittest.TestCase):
+    """Unit test class for input data check and preprocessing."""
+
     def setUp(self):
         # Set up the sample dataset and conventions for testing
         times = pd.date_range('2000-01-01', '2005-12-31', freq='MS')
@@ -99,8 +115,8 @@ class TestValidationPreprocessing(unittest.TestCase):
         self.end_year = 2005
 
     def test_check_and_preprocess_input_data(self):
-        # Test the check and preprocess function with the sample dataset
-        preprocessed_datasets, check_logs = \
+        """Test the check and preprocess function with the sample dataset."""
+        _, check_logs = \
             check_and_preprocess_input_data(
                 self.datasets, self.conventions, self.config)
 
@@ -149,6 +165,7 @@ class TestValidationPreprocessing(unittest.TestCase):
             check_logs['lat_lon_consistency'])
 
     def test_extend_xr_data(self):
+        """Test `extend_xr_data`."""
         extend_config = self.config
         extend_config.end_year += 2
         extend_config.time_extend_mode = True
@@ -170,6 +187,7 @@ class TestValidationPreprocessing(unittest.TestCase):
                       check_logs['extended_time_period'])
 
     def test_trim_xr_data(self):
+        """Test `trim_xr_data`."""
         # Test the trimming functionality by providing an extended dataset
         extended_times = pd.date_range('1998-01-01', '2007-12-31', freq='YS')
         extended_dataset = xr.Dataset({
@@ -190,7 +208,7 @@ class TestValidationPreprocessing(unittest.TestCase):
             }
 
         # Preprocess the dataset to trim it to the desired time range
-        preprocessed_datasets, check_logs = check_and_preprocess_input_data(
+        preprocessed_datasets, _ = check_and_preprocess_input_data(
             datasets, self.conventions, self.config)
 
         # Verify that the dataset has been trimmed correctly

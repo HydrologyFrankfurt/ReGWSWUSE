@@ -34,14 +34,24 @@ def setup_logger(debug=False):
         If True, sets the console log level to DEBUG instead of INFO.
     """
     class CustomFormatter(logging.Formatter):
+        """Custom formatter with dynamic format switching."""
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            # Define individual formatters for different levels
+            self.default_formatter = logging.Formatter('%(message)s')
+            self.detailed_formatter = logging.Formatter(
+                '%(levelname)s - %(message)s')
+
         def format(self, record):
-            # Define different formats for different log levels
+            # Dynamically select the formatter based on the log level
             if record.levelno in (logging.DEBUG, logging.WARNING,
                                   logging.ERROR, logging.CRITICAL):
-                self._style._fmt = '%(levelname)s - %(message)s'
+                formatter = self.detailed_formatter
             else:
-                self._style._fmt = '%(message)s'
-            return super().format(record)
+                formatter = self.default_formatter
+            return formatter.format(record)
+
     # Ensure the logs directory exists
     os.makedirs('./logs', exist_ok=True)
     logging_config = {

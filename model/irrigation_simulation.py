@@ -81,7 +81,6 @@ class IrrigationSimulator:
         use of total water resources. (input)
     """
 
-    # pylint: disable=too-few-public-methods, too-many-instance-attributes
     def __init__(self, irr_data, config):
         """
         Initialize the IrrigationSimulator with data and run the simulation.
@@ -119,8 +118,8 @@ class IrrigationSimulator:
              else 0)
         if isinstance(self.fraction_gw_use, int) and self.fraction_gw_use == 0:
             logger.info(
-                f"fraction_gw_use for {self.sector_name} is set to 0 by "
-                "default. Differs from WaterGAP 2.2e"
+                "fraction_gw_use for %s is set to 0 by default. Differs from "
+                "WaterGAP 2.2e", self.sector_name
                 )
         # Set fraction of groundwater return, default to 0 if not provided
         self.fraction_return_gw = \
@@ -131,8 +130,8 @@ class IrrigationSimulator:
         if (isinstance(self.fraction_return_gw, int) and
             self.fraction_return_gw == 0):
             logger.info(
-                f"fraction_return_gw for {self.sector_name} is set to 0 by "
-                "default. Differs from WaterGAP 2.2e"
+                "fraction_return_gw for %s is set to 0 by default. Differs "
+                "from WaterGAP 2.2e", self.sector_name
                 )
 
         if self.deficit_irrigation_mode:

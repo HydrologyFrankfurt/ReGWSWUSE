@@ -164,6 +164,7 @@ def initialize_extended_data(data, target_time):
     extended_data : xr.DataArray or xr.Dataset
         The initialized extended DataArray or Dataset.
     """
+    extended_data = None
     if isinstance(data, xr.DataArray):
         extended_data = xr.DataArray(
             np.empty((len(target_time), *data.shape[1:])),
@@ -178,6 +179,7 @@ def initialize_extended_data(data, target_time):
                     (coord, data.values)
                     for coord, data in data.coords.items()}
         )
+
     return extended_data
 
 

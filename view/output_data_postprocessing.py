@@ -77,10 +77,17 @@ def write_to_xr_dataarray(var_result_np, coords, var_name, sector_name):
 
         var_result_xr.attrs = set_global_metadata()
 
-    except Exception as e:
+    except ValueError as e:  # Replace Exception with specific error type
         logger.error(
-            f"Failed to create xarray.DataArray for "
-            f"{sector_name}/{var_name}: {e}")
+            "Failed to create xarray.DataArray for %s/%s: %s",
+            sector_name, var_name, e
+        )
+    except KeyError as e:  # Add another specific exception, if applicable
+        logger.error(
+            "Missing key in coordinates or metadata for %s/%s: %s",
+            sector_name, var_name, e
+        )
+
     return var_result_xr
 
 # =============================================================================
@@ -126,7 +133,8 @@ def set_variable_metadata_xr(sector_name, var_name):
         return variable_metadata
 
     except KeyError as e:
-        logger.error(f"Metadata for{sector_name}/{var_name} not found: {e}")
+        logger.error(
+            "Metadata for %s/%s not found: %s", sector_name, var_name, e)
         raise
 
 
@@ -265,7 +273,7 @@ def sum_global_annual_totals(gwswuse_results, start_year, end_year):
     for var_name in global_annual_totals_vars:
         # Create an empty dataframe to store annual totals for each sector
         var_df = pd.DataFrame(index=year_range)
-        logger.debug(f"Calculate global annual totals for {var_name}.")
+        logger.debug("Calculate global annual totals for %s.", var_name)
         # Iterate over each sector in the gwswuse_results
         for sector in gwswuse_results.keys():
             # Get the array of values for the current variable and sector

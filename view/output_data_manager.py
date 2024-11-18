@@ -82,7 +82,7 @@ def output_data_manager(
     # Save xr data as netcdf files in output_dir
     save_datasets_to_netcdf(output_dir, output_xr_data)
 
-    logger.info(f"Output data saved in:\n{output_dir}")
+    logger.info("Output data saved in:\n%s", output_dir)
 
     return output_xr_data
 # ===============================================================
@@ -140,10 +140,10 @@ def initialize_output_selection(output_selection):
 
     global_annual_total_flag = output_selection['Global_Annual_Totals']
 
-    logger.debug(f"Specific-selected output sectors: {output_sector_sel}")
-    logger.debug(f"Specific-selected output variables: {output_vars_sel}")
-    logger.debug(f"WGHM input flag: {wghm_input_flag}")
-    logger.debug(f"Global annual total flag: {global_annual_total_flag}")
+    logger.debug("Specific-selected output sectors: %s", output_sector_sel)
+    logger.debug("Specific-selected output variables: %s", output_vars_sel)
+    logger.debug("WGHM input flag: %s", wghm_input_flag)
+    logger.debug("Global annual total flag: %s", global_annual_total_flag)
 
     return (output_sector_sel, output_vars_sel,
             wghm_input_flag, global_annual_total_flag)
@@ -194,8 +194,8 @@ def get_selected_var_results_as_xr(gwswuse_results,
                 var_name = sector_name + '_' + var_name
                 output_xr_data[var_name] = var_xr_result
                 logger.debug(
-                    f"xr.DataArray with metadata created successfully for: "
-                    f"{sector_name}_{var_name}.")
+                    "xr.DataArray with metadata created successfully for: "
+                    "%s_%s", sector_name, var_name)
 
     # second get xr data for wghm input
     if wghm_input_flag:
@@ -219,8 +219,8 @@ def get_selected_var_results_as_xr(gwswuse_results,
                                               var_name,
                                               sector_name)
                 logger.debug(
-                    f"xr.DataArray with metadata created successfully for: "
-                    f"{sector_name}_{var_name}.")
+                    "xr.DataArray with metadata created successfully for: "
+                    "%s_%s", sector_name, var_name)
 
     return output_xr_data
 # ===============================================================
@@ -253,9 +253,9 @@ def save_datasets_to_netcdf(output_dir, output_xr_data):
                  for var in dataset.data_vars}
             dataset.to_netcdf(file_path, format='NETCDF4', encoding=encoding)
             saved_files.append(file_path)
-            logger.debug(f"Saved NetCDF file: {key}.nc")
-    logger.info(f"Total NetCDF files created: {len(output_xr_data)}")
-    logger.debug(f"NetCDF saving runtime: {time.time() - start_time} seconds")
+            logger.debug("Saved NetCDF file: %s.nc", key)
+    logger.info("Total NetCDF files created: %s", len(output_xr_data))
+    logger.debug("NetCDF saving runtime: %s seconds", time.time() - start_time)
 
 
 def save_global_annual_totals_to_excel(output_dir, global_annuals_dict):

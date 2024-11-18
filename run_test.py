@@ -12,6 +12,8 @@
 
 import unittest
 import os
+import sys
+
 
 def run_all_tests():
     """Run all test scripts in the 'test' directory."""
@@ -35,7 +37,7 @@ def run_all_tests():
         print(f"{len(result.failures)} tests failed.")
         print(f"{len(result.errors)} tests encountered errors.")
         # Optionally exit the process with an error code if tests failed
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

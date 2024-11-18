@@ -16,7 +16,7 @@ import time
 import json
 from gwswuse_logger import setup_logger, get_logger
 from misc import cli_args
-from misc import ascii_image
+from misc.ascii_image import LOGO
 from controller import configuration_module as cm
 from controller import input_data_manager as idm
 from model.irrigation_simulation import IrrigationSimulator
@@ -39,6 +39,8 @@ logger = get_logger(__name__)
 def run_gwswuse():
     """Run the linking module GWSWUSE of WaterGAP."""
     start_time = time.time()
+    # gwswuse ascii image
+    print(LOGO)
 
     logger.info("=" * 79)
     logger.info('Starting GWSWUSE software')
@@ -50,7 +52,7 @@ def run_gwswuse():
     # Initialize ConfigHandler with the filename and debug flag
     logger.info("Starting configuration loading, initialization and "
                 "validation...")
-    config = cm.ConfigHandler(args.name, args.debug)
+    config = cm.ConfigHandler(args.name)
     logger.info("Loading, initialization and validation of the configuration "
                 "completed.\n")
     logger.debug(
@@ -77,7 +79,8 @@ def run_gwswuse():
     #                     ====================
     # Sector-specific simulations
     logger.info("Starting GWSWUSE simulation for period:\n"
-                f"{config.start_year} to {config.end_year}\n")
+                "%s to %s\n", config.start_year, config.end_year
+                )
 
     irr = \
         IrrigationSimulator(preprocessed_gwswuse_data['irrigation'],
@@ -126,7 +129,7 @@ def run_gwswuse():
     end_time = time.time()
     logger.info("=" * 79)
     logger.info("GWSWUSE software run completed")
-    logger.info(f"Total runtime: {end_time - start_time} seconds.")
+    logger.info("Total runtime: %s seconds.", end_time - start_time)
     logger.info("=" * 79)
 
     return gwswuse_check_results, gwswuse_results, output_xr_data

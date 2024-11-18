@@ -181,8 +181,8 @@ def load_netcdf_files(input_data_path, sector_requirements):
                         datasets_dict[sector][variable] = dataset
                         # Log a debug message for successful file loading
                         logger.debug(
-                            f".nc-files loaded for '{sector}/{variable}'."
-                        )
+                            ".nc-files loaded for '%s/%s'.", sector, variable
+                            )
 
     return datasets_dict
 
@@ -231,14 +231,13 @@ def check_results_handling(check_logs):
         if isinstance(result, list) and result:  # Only process non-empty lists
             issues_list = "\n   - " + "\n   - ".join(result)
             if category == "too_many_vars":
-                logger.critical(f"Multiple variables found:{issues_list}")
+                logger.critical("Multiple variables found: %s", issues_list)
                 critical_error_found = True
             elif category == "time_resolution_mismatch":
-                logger.critical(f"Time resolution mismatch:{issues_list}")
+                logger.critical("Time resolution mismatch: %s", issues_list)
                 critical_error_found = True
             elif category == "missing_time_coords":
-                logger.critical("Time coordinates missing:"
-                                f"{issues_list}")
+                logger.critical("Time coordinates missing: %s", issues_list)
                 critical_error_found = True
             elif category == "missing_time_coverage":
                 missing_paths = \
@@ -250,32 +249,34 @@ def check_results_handling(check_logs):
                     extended_list = \
                         "\n   - " + "\n   - ".join(extended_paths)
                     logger.info(
-                        "Time coverage missing but data are extended:\n"
-                        f"{extended_list}"
+                        "Time coverage missing but data are extended: %s",
+                        extended_list
                         )
                 else:
-                    logger.critical(f"Time coverage missing for:{issues_list}")
+                    logger.critical("Time coverage missing for: %s",
+                                    issues_list
+                                    )
                     critical_error_found = True
             # Handle individual warning categories with custom messages
             elif category == "unit_mismatch":
                 logger.error(
                     "Unit mismatch:\n Units in these files do not match "
                     "expected units for the sector as per "
-                    "input_data_convention.json.\n Please verify:"
-                    f"{issues_list}"
+                    "input_data_convention.json.\n Please verify: %s",
+                    issues_list
                     )
             elif category == "unknown_vars":
                 logger.warning(
                     "Unknown variables:\n The following variables are not in "
                     "reference_names as specified in input_data_convention"
-                    f".json.\n Please verify:{issues_list}"
+                    ".json.\n Please verify: %s", issues_list
                     )
             elif category == "missing_unit":
                 logger.warning(
                     "Missing units:\n The following variables lack unit "
                     "definitions required by sector as per "
-                    "input_data_convention.json.\n Please verify:"
-                    f"{issues_list}"
+                    "input_data_convention.json.\n Please verify: %s",
+                    issues_list
                     )
 
         elif isinstance(result, bool):
@@ -287,14 +288,14 @@ def check_results_handling(check_logs):
                         )
                     critical_error_found = True
                 else:
-                    logger.debug(f"{category}: {result}")
+                    logger.debug("%s: %s", category, result)
 
         elif isinstance(result, list) and not result:
             # Empty lists are only informational
             if category == "extended_time_period":
                 pass
             else:
-                logger.debug(f"{category}: No issues detected")
+                logger.debug("%s: No issues detected", category)
 
     # Check if critical errors were found and exit the program if necessary
     if critical_error_found:

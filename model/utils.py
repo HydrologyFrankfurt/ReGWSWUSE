@@ -56,17 +56,19 @@ def print_cell_output_headline(sector, cell_specific_option, flag):
         if sector in ["irrigation", "total", "cross-sector totals"]:
             # For sectors that use both year and month
             logger.info(
-                f"{sector} results for grid cell with lat: {lat}, lon: {lon},"
-                f"\nyear: {year}, month: {month}\n"
-                "-------------------------------------------------------------"
+                "%s results for grid cell with lat: %s, lon: %s,\n"
+                "year: %s, month: %s\n"
+                "------------------------------------------------------------",
+                sector, lat, lon, year, month
                 )
         elif sector in ["domestic", "manufacturing", "thermal power",
                         "livestock"]:
             # For sectors that use only the year
             logger.info(
-                f"{sector} results for grid cell with lat: {lat}, lon: {lon},"
-                f"\nyear: {year}\n"
-                "-------------------------------------------------------------"
+                "%s results for grid cell with lat: %s, lon: %s,\n"
+                "year: %s\n"
+                "------------------------------------------------------------",
+                sector, lat, lon, year
                 )
 
 
@@ -164,26 +166,30 @@ def print_cell_value(var, var_name, coords_idx=None, unit="-", flag=False):
         If True, the function will log the value. If False, the function will
         do nothing. Default is False.
     """
+
     if flag:
         # Check if var is a scalar (int, float)
         if isinstance(var, (float, int)):
-            logger.info(f"{var_name} [{unit}]: {var}")
+            logger.info("%s [%s]: %s", var_name, unit, var)
 
         # If var is a numpy array, handle based on its dimensions
         elif hasattr(var, 'ndim'):
             if var.ndim == 3:
                 logger.info(
-                    f"{var_name} [{unit}]: "
-                    f"{var[coords_idx[0], coords_idx[1], coords_idx[2]]}")
+                    "%s [%s]: %s", var_name, unit,
+                    var[coords_idx[0], coords_idx[1], coords_idx[2]]
+                    )
             elif var.ndim == 2:
-                logger.info(f"{var_name} [{unit}]: "
-                            f"{var[coords_idx[1], coords_idx[2]]}")
+                logger.info(
+                    "%s [%s]: %s", var_name, unit,
+                    var[coords_idx[1], coords_idx[2]]
+                    )
             elif var.ndim == 1:
-                logger.info(f"{var_name} [{unit}]: {var[0]}")
+                logger.info("%s [%s]: %s", var_name, unit, var[0])
             else:
-                logger.info(f"{var_name} [{unit}]: {var}")
+                logger.info("%s [%s]: %s", var_name, unit, var)
         else:
-            logger.info(f"{var_name} [{unit}]: {var}")
+            logger.info("%s [%s]: %s", var_name, unit, var)
 
 
 def test_net_abstraction_tot(
@@ -223,14 +229,15 @@ def test_net_abstraction_tot(
             net_abstraction_tot, consumptive_use_tot, equal_nan=True
             ):
         logger.debug(
-            f"Test for {sector} passed: Consumptive use in total is equal \n"
-            "to net abstraction in total (ignoring NaN values).\n")
-
+            "Test for %s passed: Consumptive use in total is equal to net "
+            "abstraction in total (ignoring NaN values).\n", sector
+            )
     elif not np.allclose(
             net_abstraction_tot, consumptive_use_tot, rtol=1e-03, atol=1e-04,
             equal_nan=True
             ):
         logger.warning(
-            f"Test for {sector} failed:Consumptive use in total is not "
-            "equal to net abstraction in total. Relative Tolerance of 0.1 % "
-            "and absolute tolerance of 0.0001 were exceeded!\n")
+            "Test for %s failed: Consumptive use in total is not equal to net "
+            "abstraction in total. Relative tolerance of 0.1%% and absolute "
+            "tolerance of 0.0001 were exceeded!\n", sector
+            )

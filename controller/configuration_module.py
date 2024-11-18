@@ -29,23 +29,27 @@ class ConfigHandler:
     # Make sure that the instance can only be instantiated once
     _instance = None
 
-    def __new__(cls, config_filename='gwswuse_config.json', debug=False):
+    def __new__(cls, config_filename='gwswuse_config.json'):
         """Singleton implementation to ensure that only one instance exists."""
         # Check if an instance already exists
         if cls._instance is None:
             # Create the instance if it doesn't exist
             cls._instance = super(ConfigHandler, cls).__new__(cls)
-            cls._instance.debug = debug
-            # Load the configuration file
-            cls._instance._load_config(config_filename)
-            # Initialize configuration (custom logic should go here)
-            cls._instance._initialize_config()
-            # Validate the configuration after loading and initializing
-            cls._instance._validate_config()
-            # Save configuration in output data folder
-            cls._instance.save_config()
-
         return cls._instance
+
+    def __init__(self, config_filename='gwswuse_config.json'):
+        if not hasattr(self, '_initialized'):
+            self._initialized = True
+            # Load the configuration file
+            self._load_config(config_filename)
+            # Initialize configuration (custom logic should go here)
+            self._initialize_config()
+            # Initialize errors_found as an instance variable
+            self.errors_found = False
+            # Validate the configuration
+            self._validate_config()
+            # Save configuration in output data folder
+            self.save_config()
 
     def _load_config(self, config_filename):
         """Load the configuration from a file and initialize & validate it.
@@ -77,8 +81,8 @@ class ConfigHandler:
         except json.JSONDecodeError as json_error:
             # Handle invalid JSON format
             logger.error(
-                f'Error decoding JSON configuration file: '
-                f'{filename} - {str(json_error)}'
+                "Error decoding JSON configuration file: %s - %s",
+                filename, str(json_error)
                 )
             sys.exit()
         else:
@@ -106,7 +110,8 @@ class ConfigHandler:
         self.start_year = simulation_period.get("start")
         self.end_year = simulation_period.get("end")
         logger.debug(
-            f"Simulation period from {self.start_year} to {self.end_year}")
+            "Simulation period from %s to %s", self.start_year, self.end_year
+            )
         # =====================================================================
         # Initialize SimulationOptions
         # =====================================================================
@@ -150,8 +155,6 @@ class ConfigHandler:
 
     def _validate_config(self):
         """Validate configuration directly after loading and initializing."""
-        # Initialize errors_found as an instance variable
-        self.errors_found = False
         # Set errors_found to True if any error is logged in validations
         self._validate_paths()
         self._validate_simulation_period()
@@ -330,8 +333,8 @@ class ConfigHandler:
                     validate_output_selection_recursively(value)
             elif not isinstance(selection, bool):
                 logger.error(
-                    f"Value '{selection}' in 'OutputSelection' must be a "
-                    "boolean"
+                    "Value '%s' in 'OutputSelection' must be a boolean",
+                    selection
                     )
 
         validate_output_selection_recursively(self.output_selection)
@@ -365,7 +368,7 @@ class ConfigHandler:
         config_output_name = \
             os.path.join(self.output_dir, "config_" + current_date + ".json")
         try:
-            with open(config_output_name, "w") as json_file:
+            with open(config_output_name, "w", encoding="utf-8") as json_file:
                 json.dump(self.config_data, json_file, indent=4)
 
         except IOError as e:

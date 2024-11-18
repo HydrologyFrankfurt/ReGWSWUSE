@@ -12,8 +12,7 @@
 
 import unittest
 from unittest.mock import patch, mock_open
-import logging
-from controller.configuration_module import ConfigHandler, logger
+from controller.configuration_module import ConfigHandler
 
 
 class TestConfigHandler(unittest.TestCase):

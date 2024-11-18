@@ -164,10 +164,10 @@ def check_time_coords(
         else:
             # Log an error if expected_frequency is invalid
             logger.error(
-                f"Invalid expected_frequency '{expected_frequency}' provided "
-                "from input_data_convention.json."
-                "Must be either 'monthly' or 'annual'."
-            )
+                "Invalid expected_frequency '%s' provided from "
+                "input_data_convention.json. Must be either 'monthly' or "
+                "'annual'.", expected_frequency
+                )
             raise ValueError(
                 "expected_frequency must be either 'monthly' or 'annual'"
             )

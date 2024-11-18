@@ -21,7 +21,6 @@ from model.model_equations import \
      calc_cross_sector_totals, calc_total_fractions)
 
 
-
 class TestModelEquations(unittest.TestCase):
     """Unit test class for the model equation functions."""
 
@@ -38,13 +37,13 @@ class TestModelEquations(unittest.TestCase):
             np.array([[[1.0], [np.nan]], [[2.0], [3.0]]])
         self.consumptive_use_gw = \
             np.array([[[0.4], [np.nan]], [[0.8], [1.8]]])
-    
+
         self.consumptive_use_sw = \
             np.array([[[0.6], [np.nan]], [[1.2], [1.2]]])
 
         self.abstraction_tot = \
             np.array([[[2.0], [np.nan]], [[4.0], [6.0]]])
-    
+
         self.abstraction_gw = \
             np.array([[[0.8], [np.nan]], [[1.6], [3.6]]])
 
@@ -66,7 +65,6 @@ class TestModelEquations(unittest.TestCase):
         self.net_abstraction_sw = \
             np.array([[[0.6], [np.nan]], [[1.2], [1.2]]])
 
-
         self.float_factor = 0.7
         self.mask_1 = \
             np.array([[[1.0], [0.0]]])
@@ -77,18 +75,18 @@ class TestModelEquations(unittest.TestCase):
 
         self.consumptive_use_deficit = \
             np.array([[[0.7], [np.nan]], [[1.4], [3.0]]])
-        
+
         self.efficiency_sw = np.array([[[0.5], [0.8]]])
         self.irr_abstraction_sw = \
             np.array([[[0.6/0.5], [np.nan]], [[1.2/0.5], [1.2/0.8]]])
 
-        self.enforce_efficiency_gw = np.array([[[0.7], [0.7]]])        
+        self.enforce_efficiency_gw = np.array([[[0.7], [0.7]]])
         self.irr_abstraction_gw_enforce = \
             np.array([[[0.4/0.7], [np.nan]], [[0.8/0.7], [1.8/0.7]]])
         self.irr_abstraction_tot_enforce = \
             np.array([[[0.4/0.7 + 0.6/0.5], [np.nan]],
                       [[0.8/0.7 + 1.2/0.5], [1.8/0.7 + 1.2/0.8]]])
-        
+
         self.adjust_efficiency_gw = np.array([[[0.7], [0.8]]])
         self.irr_abstraction_gw_adjust = \
             np.array([[[0.4/0.7], [np.nan]], [[0.8/0.7], [1.8/0.8]]])
@@ -118,18 +116,17 @@ class TestModelEquations(unittest.TestCase):
             consumptive_use_tot, fraction_gw_use
             )
 
-        self.assertTrue(np.all((consumptive_use_gw >= 0) &
-                                (consumptive_use_gw <= (7e8*0.8))))
-        self.assertTrue(np.all((consumptive_use_sw >= 0) &
-                                (consumptive_use_sw <= 7e8)))
+        self.assertTrue(np.all(
+            (consumptive_use_gw >= 0) & (consumptive_use_gw <= (7e8*0.8))))
+        self.assertTrue(np.all(
+            (consumptive_use_sw >= 0) & (consumptive_use_sw <= 7e8)))
 
     def test_calc_return_flow_totgwsw(self):
         """Test the `calc_return_flow_totgwsw` function."""
         exp_return_flow_tot = self.return_flow_tot
         exp_return_flow_gw = self.return_flow_gw
         exp_return_flow_sw = self.return_flow_sw
-        
-        
+
         return_flow_tot, return_flow_gw, return_flow_sw = \
             calc_return_flow_totgwsw(self.abstraction_tot,
                                      self.consumptive_use_tot,
@@ -195,10 +192,9 @@ class TestModelEquations(unittest.TestCase):
         self.assertTrue(np.all((net_abstraction_sw >= 1e8) &
                                (net_abstraction_sw <= 1.4e9)))
 
-
     def test_set_irr_deficit_locations(self):
         """Test the `calc_net_abstraction_gwsw` function."""
-        exp_deficit_irrigation_location =  self.deficit_irrigation_location
+        exp_deficit_irrigation_location = self.deficit_irrigation_location
 
         deficit_irrigation_location = set_irr_deficit_locations(
             self.mask_1, self.mask_2, self.float_factor)
@@ -206,10 +202,10 @@ class TestModelEquations(unittest.TestCase):
         self.assertTrue(np.allclose(deficit_irrigation_location,
                                     exp_deficit_irrigation_location,
                                     equal_nan=True, atol=0, rtol=1e-9))
-        
+
     def test_set_irr_deficit_locations_1(self):
         """Test the `calc_net_abstraction_gwsw` function."""
-        exp_deficit_irrigation_location =  self.deficit_irrigation_location
+        exp_deficit_irrigation_location = self.deficit_irrigation_location
 
         deficit_irrigation_location = set_irr_deficit_locations(
             self.mask_1, self.mask_2, self.float_factor)
@@ -259,7 +255,7 @@ class TestModelEquations(unittest.TestCase):
         mode = "enforce"
 
         exp_enforce_efficiency_gw = self.enforce_efficiency_gw
-        
+
         enforce_efficiency_gw = set_irr_efficiency_gw(
             efficiency_sw, threshold, mode)
 
@@ -270,7 +266,7 @@ class TestModelEquations(unittest.TestCase):
         mode = "adjust"
 
         exp_adjust_efficiency_gw = self.adjust_efficiency_gw
-        
+
         adjust_efficiency_gw = set_irr_efficiency_gw(
             efficiency_sw, threshold, mode)
 
@@ -285,7 +281,7 @@ class TestModelEquations(unittest.TestCase):
         """
         # Define test threshold and mode
         threshold = 0.7
-    
+
         # Case 1: Test with an empty array
         efficiency_sw_empty = np.array([])
         result_empty = set_irr_efficiency_gw(
@@ -293,45 +289,46 @@ class TestModelEquations(unittest.TestCase):
             )
         self.assertTrue(result_empty.size == 0,
                         "Empty array should return an empty result.")
-    
+
         # Case 2: Test with an array containing NaN values
         efficiency_sw_nan = np.full((360, 720), np.nan)
-        result_nan = set_irr_efficiency_gw(efficiency_sw_nan, threshold, "enforce")
-        self.assertTrue(np.isnan(result_nan).all(),
-                        "Array with NaNs should return an array with NaNs only.")
+        result_nan = set_irr_efficiency_gw(
+            efficiency_sw_nan, threshold, "enforce")
+        self.assertTrue(
+            np.isnan(result_nan).all(),
+            "Array with NaNs should return an array with NaNs only.")
 
         # Case 3: Test with random efficiency array in specified shape
         efficiency_sw_random = np.random.uniform(0.4, 0.8, size=(360, 720))
-    
+
         # Expected output for "enforce" mode: all values set to threshold
         result_enforce = set_irr_efficiency_gw(
             efficiency_sw_random, threshold, "enforce"
             )
         self.assertTrue(np.all(result_enforce == threshold))
-        
+
         # Expected output for "adjust" mode:
         # values below threshold adjusted, others unchanged
         result_adjust = set_irr_efficiency_gw(
-            efficiency_sw_random, threshold,"adjust"
+            efficiency_sw_random, threshold, "adjust"
             )
         self.assertTrue(np.all(
             (result_adjust >= threshold) &
             (result_adjust <= np.max(efficiency_sw_random)))
             )
 
-    
     def test_calc_irr_abstraction_totgwsw(self):
         """Test `calc_irr_abstraction_totgwsw`function."""
         efficiency_sw = self.efficiency_sw
         efficiency_gw = self.enforce_efficiency_gw
-        
-        
+
         exp_irr_abstraction_gw_enforce = self.irr_abstraction_gw_enforce
         exp_irr_abstraction_sw = self.irr_abstraction_sw
         exp_irr_abstraction_tot_enforce = self.irr_abstraction_tot_enforce
         irr_abstraction_gw, irr_abstraction_sw, irr_abstraction_tot = \
-            calc_irr_abstraction_totgwsw(self.consumptive_use_gw, efficiency_gw,
-                                         self.consumptive_use_sw, efficiency_sw)
+            calc_irr_abstraction_totgwsw(
+                self.consumptive_use_gw, efficiency_gw,
+                self.consumptive_use_sw, efficiency_sw)
 
         self.assertTrue(np.allclose(irr_abstraction_gw,
                                     exp_irr_abstraction_gw_enforce,
@@ -370,9 +367,9 @@ class TestModelEquations(unittest.TestCase):
              [[np.nan], [62.0]], [[np.nan], [60.0]], [[np.nan], [62.0]]])
 
         annual_data = np.array([[[365.0], [np.nan]], [[np.nan], [730.0]]])
-        
+
         cross_sector_monthly_expected = monthly_data * 5
-        
+
         cross_sector_monthly = calc_cross_sector_totals(monthly_data,
                                                         annual_data,
                                                         annual_data,
@@ -382,8 +379,9 @@ class TestModelEquations(unittest.TestCase):
         self.assertTrue(np.allclose(
             cross_sector_monthly, cross_sector_monthly_expected,
             equal_nan=True, atol=0, rtol=0))
-    
+
     def test_calc_total_fractions(self):
+        """Test `calc_total_fractions`."""
         consumptive_use_gw = np.random.uniform(0, 7e8, size=(3, 360, 720))
         consumptive_use_tot = consumptive_use_gw * 2
         fraction_gw_use_expected = \
@@ -392,26 +390,24 @@ class TestModelEquations(unittest.TestCase):
         return_flow_tot = return_flow_gw * 4
         fraction_return_gw_expected = \
             np.where(return_flow_tot > 0, 0.25, np.nan)
-        
+
         fraction_gw_use, fraction_return_gw = calc_total_fractions(
             consumptive_use_gw, consumptive_use_tot,
             return_flow_gw, return_flow_tot
             )
 
-        self.assertTrue(np.all(fraction_gw_use == 
-                               fraction_gw_use_expected))
-        self.assertTrue(np.all(fraction_return_gw == 
-                               fraction_return_gw_expected))
+        self.assertTrue(np.all(
+            fraction_gw_use == fraction_gw_use_expected))
+        self.assertTrue(np.all(
+            fraction_return_gw == fraction_return_gw_expected))
 
     def test_dom_man_tp_liv_net_abstraction(self):
         """Test `net_abstraction_sum`."""
-        consumptive_use_gw, consumptive_use_sw = \
-            calc_gwsw_water_use(self.consumptive_use_tot, self.fraction)
 
         abstraction_gw, abstraction_sw = \
             calc_gwsw_water_use(self.abstraction_tot, self.fraction)
 
-        return_flow_tot, return_flow_gw, return_flow_sw = \
+        _, return_flow_gw, return_flow_sw = \
             calc_return_flow_totgwsw(self.abstraction_tot,
                                      self.consumptive_use_tot,
                                      self.fraction)
@@ -425,7 +421,6 @@ class TestModelEquations(unittest.TestCase):
         self.assertTrue(np.allclose(
             net_abstraction_tot, self.consumptive_use_tot,
             equal_nan=True, atol=0, rtol=0))
-    
 
 
 if __name__ == '__main__':
