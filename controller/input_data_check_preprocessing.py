@@ -207,7 +207,7 @@ def preprocess_input_data_based_on_config(datasets_dict, config):
         datasets_dict['irrigation'].pop('abstraction_irr_part_mask', None)
 
     # 2. Process irrigation input based on AEI settings
-    if config.irrigation_input_based_on_aei:
+    if not config.irrigation_input_based_on_aei:
         datasets_dict['irrigation'].pop('fraction_aai_aei', None)
     else:
         # Extend 'fraction_aai_aei' data if irrigation input is based on AEI
