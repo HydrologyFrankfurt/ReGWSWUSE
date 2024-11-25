@@ -6,7 +6,7 @@
         "pmanfractgwuse",
         "pirruse", "pirrww",
         "pirrfractgwuse", "pirrfractreturngw",
-        "irr_abstraction_part_5pct_mask", "gwd_5mm_mask",
+        "irr_abstraction_part_5pct_mask", "wwirr_mask", "gwd_5mm_mask",
         "plivuse",
         "ptpuse", "ptpww",
         "p_dom_consumptive_use_tot", "p_dom_abstraction_tot",
