@@ -116,14 +116,14 @@ def expand_array_size(annual_array):
     # Determine the shape of the annual array
     num_years, size_lat_coords, size_lon_coords = annual_array.shape
 
-    # Initialisieren des monatlichen Arrays
+    # Initialize the monthly array
     monthly_array = \
         np.empty((num_years * num_month_per_year,
                   size_lat_coords,
                   size_lon_coords),
                  dtype=annual_array.dtype)
 
-    # Wiederholen der jährlichen Daten für jeden Monat des Jahres
+    # Repeat the annual data for each month of the year
     for year in range(num_years):
         for month in range(num_month_per_year):
             monthly_array[year * num_month_per_year + month, :, :] = \
