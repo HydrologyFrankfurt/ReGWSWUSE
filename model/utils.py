@@ -85,8 +85,7 @@ def get_np_coords_cell_idx(xr_data, sector, cell_specific_option, flag):
     cell_specific_option : dict
         Dictionary with 'lat', 'lon', 'year', and optional 'month' to locate
         a specific cell's data:
-        {   'flag': bool,
-            'coords': {
+        {   'coords': {
                 'lat': float,
                 'lon': float,
                 'year': int,
@@ -113,28 +112,20 @@ def get_np_coords_cell_idx(xr_data, sector, cell_specific_option, flag):
         # Determine the date based on sector and availability of 'month'
         if sector in ["irrigation", "total"] and month:
             # Timestamp for month-specific cases
-            date = pd.Timestamp(f'{year}-{month:02d}-01')
+            date = np.datetime64(f'{year}-{month:02d}-01')
         else:
-            # Timestamp for start of the year
-            date = pd.Timestamp(f'{year}-01-01')
+            # Use the beginning of the year as the default timestamp
+            date = np.datetime64(f'{year}-01-01')
 
-        # Select the nearest point based on lat, lon, and time
-        selected_data = xr_data.sel(
-            lat=lat, lon=lon, time=date, method='nearest'
-            )
-        # Find the NumPy indices of the nearest time coordinate
-        time_idx = np.where(
-            xr_data.coords['time'].values ==
-            np.datetime64(selected_data.coords['time'].values)
-            )[0][0]
+        # Find the index of the nearest time value
+        time_idx = np.abs(xr_data.coords['time'].values - date).argmin()
 
-        # Find the NumPy indices for latitude and longitude
-        lat_idx = np.where(
-            xr_data.coords['lat'].values == selected_data.coords['lat'].values
-            )[0][0]
-        lon_idx = np.where(
-            xr_data.coords['lon'].values == selected_data.coords['lon'].values
-            )[0][0]
+        # Find the index of the nearest latitude
+        lat_idx = np.abs(xr_data.coords['lat'].values - lat).argmin()
+
+        # Find the index of the nearest longitude
+        lon_idx = np.abs(xr_data.coords['lon'].values - lon).argmin()
+
 
         # Return the indices and the actual coordinates
         return (time_idx, lat_idx, lon_idx)
