@@ -9,9 +9,9 @@
   "RuntimeOptions":{
       "SimulationOption": {
         "time_extend_mode": false,
-        "irrigation_efficiency_gw_mode": "enforce",
-        "irrigation_input_based_on_aei": false,
-        "correct_irr_simulation_by_t_aai": false,
+        "irrigation_efficiency_gw_mode": "adjust",
+        "irrigation_input_based_on_aei": true,
+        "correct_irr_simulation_by_t_aai": true,
         "deficit_irrigation_mode": true 
       },
       "ParameterSetting": {
@@ -63,6 +63,7 @@
     "Global_Annual_Totals": true
   }
 }
+
 
 
 
