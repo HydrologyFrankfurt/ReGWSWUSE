@@ -23,7 +23,7 @@
         "end": 1905
       },
       "CellSpecificOutput": {
-        "flag": true,
+        "flag": false,
         "coords": {
           "lat": 30.75,
           "lon": 30.75,
@@ -63,4 +63,5 @@
     "Global_Annual_Totals": true
   }
 }
+
 
