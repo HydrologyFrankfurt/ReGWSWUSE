@@ -33,7 +33,7 @@
       }
   },
   "OutputSelection": {
-    "WGHM_input_run": false,
+    "WGHM_input_run": true,
     "Sectors": {
       "total": true,
       "irrigation": false,
@@ -63,5 +63,6 @@
     "Global_Annual_Totals": true
   }
 }
+
 
 
